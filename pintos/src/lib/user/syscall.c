@@ -64,7 +64,7 @@
 int
 practice (int i)
 {
-  return syscall1(SYS_PRACTICE, i);
+  return syscall1 (SYS_PRACTICE, i);
 }
 
 void
