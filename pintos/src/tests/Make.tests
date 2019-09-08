@@ -2,6 +2,14 @@
 
 include $(patsubst %,$(SRCDIR)/%/Make.tests,$(TEST_SUBDIRS))
 
+# Special rule: use clang instead of gcc for stack-align-* tests.
+# This is necessary because gcc defensively auto-aligns the stack in main,
+# which will cause the stack-align-* tests to always pass even if the kernel
+# does not properly align the stack.
+# See https://stackoverflow.com/questions/40307193/responsibility-of-stack-alignment-in-32-bit-x86-assembly.
+tests/userprog/stack-align.o: tests/userprog/stack-align.c
+	clang -m32 -c $< -o $@ $(CFLAGS) $(CPPFLAGS) $(WARNINGS) $(DEFINES) $(DEPS)
+
 PROGS = $(foreach subdir,$(TEST_SUBDIRS),$($(subdir)_PROGS))
 TESTS = $(foreach subdir,$(TEST_SUBDIRS),$($(subdir)_TESTS))
 EXTRA_GRADES = $(foreach subdir,$(TEST_SUBDIRS),$($(subdir)_EXTRA_GRADES))
@@ -17,7 +25,7 @@ endif
 TIMEOUT = 60
 
 clean::
-	rm -f $(OUTPUTS) $(ERRORS) $(RESULTS) 
+	rm -f $(OUTPUTS) $(ERRORS) $(RESULTS)
 
 grade:: results
 	$(SRCDIR)/tests/make-grade $(SRCDIR) $< $(GRADING_FILE) | tee $@
