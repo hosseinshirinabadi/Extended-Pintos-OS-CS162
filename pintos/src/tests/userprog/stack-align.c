@@ -7,6 +7,9 @@
 #include "tests/main.h"
 #include <stdint.h>
 
+void NO_INLINE check_pointer_alignment (void *candidate);
+void NO_INLINE check_stack_alignment (void);
+
 void NO_INLINE
 check_pointer_alignment (void *candidate)
 {
