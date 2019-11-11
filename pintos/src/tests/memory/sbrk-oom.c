@@ -47,6 +47,7 @@ oom_iteration(int step_size)
 void
 test_sbrk_oom (int num_iterations, int step_size)
 {
+  int first_depth = oom_iteration(1);
   int expected_depth = oom_iteration(step_size);
   for (int i = 0; i != num_iterations - 1; i++) {
     int reached_depth = oom_iteration(step_size);
@@ -56,6 +57,10 @@ test_sbrk_oom (int num_iterations, int step_size)
     }
   }
   msg("Completed all %d iterations", num_iterations);
+  int final_depth = oom_iteration(1);
+  if (first_depth != final_depth) {
+    fail("On final run, expected sbrk'd bytes is %d but actual is %d.", first_depth, final_depth);
+  }
   msg("Now checking that memory is actually unmapped");
   msg("This access should fail: %d", *((int*) sbrk(0)));
 }
