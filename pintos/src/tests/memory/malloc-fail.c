@@ -42,7 +42,7 @@ test_main (void)
   int* r = test_alloc(NUM_INTS);
 
   ASSERT(p != r);
-  ASSERT(p + NUM_INTS <= q || q + NUM_INTS <= p);
+  ASSERT(p + NUM_INTS <= r || r + NUM_INTS <= p);
 
   free(p);
   free(r);
