@@ -36,7 +36,7 @@ We create the function `parser()` which does the tokenizing of the string file_n
  First we need to pass input to the `process_execute()` named "file_name" to the `parser()` function. 
  This will parse the file_name with the delimiter as `spaces` and save the tokenized words inside a list variable such as `argv`.
  The `parser()` function will also add a null pointer to the end of each word/token so we ensure that each string has a null character at the end.
- Now `argv[0]` will be the 'command' and the rest the arguments.
+ Now `argv[0]` will be the `command` and the rest the arguments.
  Then we set `argc` to the size of the `argv`
 
  Next step is to push all these onto the stack in order to pass the arguments to the process.
@@ -111,11 +111,11 @@ We will modify `process_wait()` to go through child processes and check whether 
 We will implement all algorithms in the `syscall_handler()` function inside userprog/syscall.c. The args[0] will contain the syscall type, and the subsequent elements will contain the syscall arguments, if any.
 
 - args[0] == SYS_HALT:
-Calling ‘shutdown_power_off()’ will terminate Pintos.
+Calling `shutdown_power_off()` will terminate Pintos.
 
 - args[0] == SYS_EXEC:
 We first use the validate_exec function to validate the command line argument passed to the exec syscall. This will make sure that the argument passed in is a valid null-terminator command, its pointer is in the user space, and is not null.
-Next, we will make modifications to the ‘process_execute’ function: we first create a `child_status` struct and add it to the list of current’s process children and we set the semaphore value of this struct to 0. Then using the `thread_create` function, we create a new thread and modify it to set the `parent_id` of the child struct to be the thread id of the parent process. Then after the new program has been loaded, we increment the semaphore by calling sema_up.
+Next, we will make modifications to the `process_execute` function: we first create a `child_status` struct and add it to the list of current’s process children and we set the semaphore value of this struct to 0. Then using the `thread_create` function, we create a new thread and modify it to set the `parent_id` of the child struct to be the thread id of the parent process. Then after the new program has been loaded, we increment the semaphore by calling sema_up.
 
 Then, after process_execute has returned a tid_t for the newly created thread, we find the child whose pid_t is equal to the tid_t and decrement its semaphore using sema_down. By doing so, we will know if the child has been loaded successfully or not. If it was loaded successfully, we return the child’s pid, otherwise we return -1 to indicate a failure in loading.
 
@@ -162,7 +162,7 @@ struct file_status {
 ```
 #### Algorithm:
 
-For all of the following syscalls, first we call `validate()` (defined in task 2) in order to ensure the correctness of the arguments and their size (14 characters max), as well as validating the memory buffer. In addition, we acquire an `flock` in the beginning of each of the function calls, and release them before it returns. All of the mentioned ‘filesys_xxx’ function calls are inside `filesys/filesys.c`.
+For all of the following syscalls, first we call `validate()` (defined in task 2) in order to ensure the correctness of the arguments and their size (14 characters max), as well as validating the memory buffer. In addition, we acquire an `flock` in the beginning of each of the function calls, and release them before it returns. All of the mentioned `filesys_xxx` function calls are inside `filesys/filesys.c`.
 
 - create: call the `filesys_create` which will create a new file initially initial_size bytes in size. Returns true if successful, false otherwise.
 
