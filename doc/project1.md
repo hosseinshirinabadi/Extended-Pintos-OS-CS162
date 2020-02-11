@@ -174,14 +174,13 @@ For all of the following syscalls, first we call `validate()` (defined in task 2
 
 - read: call `file_read` function on the file 
 
+- write: call `file_write` function on the file corresponding to the passed in fd, found by looping through the `files` list. If fd is 1, write to the console. 
 
-- write: file_write
+- seek: call `file_seek` function on the file corresponding to the passed in fd, found by looping through the `files` list.
 
-- seek: file_seek
+- tell: call `file_tell` function on the file corresponding to the passed in fd, found by looping through the `files` list.
 
-- tell: file_tell
-
-- close: file_close
+- close: call `file_close` function on the file corresponding to the passed in fd, found by looping through the `files` list.
 
 
 #### Synchronization: 
@@ -189,8 +188,11 @@ For all of the following syscalls, first we call `validate()` (defined in task 2
 According to the spec we can use a global lock since we will make a scheduler and a more robust locking mechanism in project 3. We will then lock every file on open and make sure no other thread or process has access or can modify that file while another process is running on it. Then release the lock before returning from the syscall having a lock on the file. This allows for no thread to concurrently use the file and gets rid of any data race.
 
 
- #### Rationale :
-The lock system causes the multiple file processes not interfere or cause a deadlock in the processes.
+
+####  Rationale :
+The global lock system causes the multiple file processes not interfere or cause a deadlock in the processes. List of all files for the current processes are restored in the process table (in list type data structure) so adding new process or removing one to table doesn’t require resizing. 
+
+
 
 
 ### Additional Questions
