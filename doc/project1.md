@@ -28,22 +28,22 @@ char *strtok(char *str, const char *delim);
 void *memcpy(void *dest, const void *src, size_t n);
 ```
 
-We create the function 'parser()' which does the tokenizing of the string file_name into word by a delimiter of spaces and add a null value to the end of each token/word
+We create the function `parser()` which does the tokenizing of the string file_name into word by a delimiter of spaces and add a null value to the end of each token/word
 
 
  #### Algorithm : 
 
- First we need to pass input to the 'process_execute()' named "file_name" to the 'parser()' function. 
- This will parse the file_name with the delimiter as 'spaces' and save the tokenized words inside a list variable such as 'argv'.
- The 'parser()' function will also add a null pointer to the end of each word/token so we ensure that each string has a null character at the end.
- Now 'argv[0]' will be the 'command' and the rest the arguments.
- Then we set 'argc' to the size of the 'argv'
+ First we need to pass input to the `process_execute()` named "file_name" to the `parser()` function. 
+ This will parse the file_name with the delimiter as `spaces` and save the tokenized words inside a list variable such as `argv`.
+ The `parser()` function will also add a null pointer to the end of each word/token so we ensure that each string has a null character at the end.
+ Now `argv[0]` will be the 'command' and the rest the arguments.
+ Then we set `argc` to the size of the `argv`
 
  Next step is to push all these onto the stack in order to pass the arguments to the process.
- We do this in 'setup_stack()'' by first pushing the elements of argv to the top of the stack in any order using 'memcpy'.
+ We do this in  `setup_stack()` by first pushing the elements of argv to the top of the stack in any order using `memcpy`.
  Then we also add a null pointer sentinel to the top of the stack as required by C standard.
  Then we start pushing the addresses of each element of argv to the stack in a reverse order (right to left). 
- Next we push the address of the 'argv' & 'argc' variables to the top of the stack in the same order. 
+ Next we push the address of the `argv` & `argc` variables to the top of the stack in the same order. 
  Finally we push a fake return address of 0 to the top of stack due to stack standard architecture. 
 
 
@@ -96,18 +96,19 @@ struct wait_status {
     /* Completion status of children. */
     struct list children;
 }
+
 ```
 
-‘validate_exec()’ is only used in exec and it’s used to check whether the argument given is not a null pointer and it’s a valid command in pintos command line & is also is a valid user memory address.
+`validate_exec()` is only used in exec and it’s used to check whether the argument given is not a null pointer and it’s a valid command in pintos command line & is also is a valid user memory address.
 
 The struct wait_status is used for wait only because we have to keep track of all variables within the struct for each child. This help with the synchronization and data sharing between parent and children
 
-We will modify process_wait() to go through child processes and check whether their pid matches the pid given and call sema_down for that child. Also remember to to free memory of “zombie processes” 
+We will modify `process_wait()` to go through child processes and check whether their pid matches the pid given and call sema_down for that child. Also remember to to free memory of “zombie processes” 
 
 
  #### Algorithm:
 
-We will implement all algorithms in the ‘syscall_handler()’ function inside userprog/syscall.c. The args[0] will contain the syscall type, and the subsequent elements will contain the syscall arguments, if any.
+We will implement all algorithms in the `syscall_handler()` function inside userprog/syscall.c. The args[0] will contain the syscall type, and the subsequent elements will contain the syscall arguments, if any.
 
 - args[0] == SYS_HALT:
 Calling ‘shutdown_power_off()’ will terminate Pintos.
@@ -121,15 +122,15 @@ Then, after process_execute has returned a tid_t for the newly created thread, w
 
 - args[0] == SYS_WAIT:
 
-This syscall will use the function ‘process_wait()’. Before using the arguments passed to the function we must validate them using ‘validate()’. 
-The parent will call sys_wait this will call ‘process_wait’ with a tid_t. 
+This syscall will use the function `process_wait()`. Before using the arguments passed to the function we must validate them using `validate()`. 
+The parent will call sys_wait this will call `process_wait` with a tid_t. 
 At first we have to check whether this tid is in the children list. If no, we return -1 because this thread is not the parent’s child.
- If yes, we first check if the child exit_code is 0, that means the child is exited and we will return the code and continue with the parent but if the child’s exit_code is not 0 it means it’s still not exited ,therefore we will ‘sema_down()’ the the lock shared between the parent and child. This will block the parent until the child is done. After the child is done or exits,it has already set it’s exit_code &  it will ‘sema_up()’ which will mean the parent can continue running. 
+ If yes, we first check if the child exit_code is 0, that means the child is exited and we will return the code and continue with the parent but if the child’s exit_code is not 0 it means it’s still not exited ,therefore we will `sema_down()` the the lock shared between the parent and child. This will block the parent until the child is done. After the child is done or exits,it has already set it’s exit_code &  it will `sema_up()` which will mean the parent can continue running. 
 Before returning destroy the shared data and remove it from list of children of parent to prevent zombie processes and return the child’s exit_code. 
 
 
 - args[0] == SYS_PRACTICE:
-This will take the second argument ‘args[1]’ which is an int and increment it and set the increment value to the  frame’s eax register by using  ‘f->eax = args[1] + 1’ 
+This will take the second argument `args[1]` which is an int and increment it and set the increment value to the  frame’s eax register by using  `f->eax = args[1] + 1` 
 
 
  #### Synchronization:
@@ -192,13 +193,13 @@ According to the spec we can use a global lock since we will make a scheduler an
 The lock system causes the multiple file processes not interfere or cause a deadlock in the processes.
 
 
-###Additional Questions
+### Additional Questions
 
 #### 1. 
 The test sc-bad-sp.c test is the one that tests this. 
 If we look at the test we see that it invokes two lines of assembly by first moving the esp (stack pointer ) to 64*1024*1024 down which is about 64Mb. 
-The exact line is line 18 : ‘movl $.-(64*1024*1024), %esp’
-This moves the stack pointer to a invalid section not inside user memory. Therefore it crashes when a syscall is called in the same line by : int $0x30
+The exact line is line 18 : `movl $.-(64*1024*1024), %esp`
+This moves the stack pointer to a invalid section not inside user memory. Therefore it crashes when a syscall is called in the same line by : `int $0x30`
 This crashes because the stack pointer given to that syscall is invalid 
 
 #### 2.
@@ -206,11 +207,11 @@ This crashes because the stack pointer given to that syscall is invalid
 The test sc-bad-sp.c test is the one that tests this. 
 If we look closer it’s similar to the same question as above but with a small subtle difference. 
 
-In this test it changes the esp to the value 0xbffffffc by calling the assembly : ‘movl $0xbffffffc, %%esp’ on line 14 manually then it sets the value at that location to a 4 byte number 0; 
+In this test it changes the esp to the value 0xbffffffc by calling the assembly : `movl $0xbffffffc, %%esp` on line 14 manually then it sets the value at that location to a 4 byte number 0; 
 
-This 4 byte number of 0x0 is extended 32 bits making it go to ‘0xbffffffc + 0x00000020 = 0xc000001c’
+This 4 byte number of 0x0 is extended 32 bits making it go to `0xbffffffc + 0x00000020 = 0xc000001c`
 
-Next a syscall is called by calling ‘int $0x30’ the syscall number now goes into invalid memory(kernel memory) by reading the syscall number which is above ‘PHYS_BASE’
+Next a syscall is called by calling `int $0x30` the syscall number now goes into invalid memory(kernel memory) by reading the syscall number which is above `PHYS_BASE`
 
 
 #### 3. 
