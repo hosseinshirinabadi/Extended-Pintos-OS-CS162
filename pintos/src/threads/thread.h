@@ -98,6 +98,11 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+
+    // list of open files
+    struct list files;
+    // keeps track of the maximum fd created
+    int current_fd;
 #endif
 
     /* Owned by thread.c. */
