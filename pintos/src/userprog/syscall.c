@@ -18,7 +18,7 @@ typedef struct file_status {
 struct lock flock;
 
 
-open_file *get_file (int fd) {
+open_file *get_file_by_fd (int fd) {
 	struct list_elem *e;
 	struct thread *current_thread = thread_current();
 	for (e = list_begin(&current_thread->files); e != list_end(&current_thread->files); e = list_next(e)) {
@@ -29,6 +29,20 @@ open_file *get_file (int fd) {
   	}
   	return NULL;
 }
+
+open_file *get_file_by_name (const char *file_name) {
+	struct list_elem *e;
+	struct thread *current_thread = thread_current();
+	for (e = list_begin(&current_thread->files); e != list_end(&current_thread->files); e = list_next(e)) {
+	    open_file *current_file = list_entry(e, open_file, elem);
+	    if (current_file->file_name == file_name) {
+	    	return current_file;
+	    }
+  	}
+  	return NULL;
+}
+
+
 
 bool create_helper (const char *file, unsigned initial_size) {
 	return filesys_create (file, initial_size);
@@ -52,7 +66,7 @@ int open_helper (const char *file) {
 }
 
 int filesize_helper (int fd) {
-	open_file *found_file = get_file(fd);
+	open_file *found_file = get_file_by_fd(fd);
 	if (found_file) {
 		return file_length (found_file->file);
 	} else {
@@ -60,20 +74,52 @@ int filesize_helper (int fd) {
 	}
 }
 
-int write_helper (int fd, const void *buffer, unsigned int size) {
-	open_file *file = get_file(fd);
+int write_helper (int fd, const void *buffer, unsigned size) {
+	open_file *file = get_file_by_fd(fd);
 	if (file) {
-		if (fd == 1) {
-			putbuf ((const char *) buffer, size);
-    		return size;
-		} else {
-			return file_write(file, (const void * ) buffer, size);
-		}
+		return file_write(file, (const void * ) buffer, size);
 	} else {
 		return 0;
 	}
 }
 
+bool remove_helper(const char *file_name) {
+	return filesys_remove(file_name);
+}
+
+int read_helper(int fd, void *buffer, unsigned size) {
+	open_file *file = get_file_by_fd(fd);
+	if (file) {
+		return file_read(file->file, buffer, size);
+	} else {
+		return -1;
+	}
+}
+
+void seek_helper(int fd, unsigned position) {
+	open_file *file = get_file_by_fd(fd);
+	if (file) {
+		file_seek (file->file, position);
+	}
+}
+
+unsigned tell_helper(int fd) {
+	open_file *file = get_file_by_fd(fd);
+	if (file) {
+		return file_tell(file->file);
+	} else {
+		return 0;
+	}
+}
+
+void close_helper(int fd) {
+	open_file *file = get_file_by_fd(fd);
+	if (file) {
+		list_remove(&file->elem);
+		file_close(file->file);
+		free(file);
+	}
+}
 
 
 void
@@ -103,33 +149,53 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = args[1];
       printf ("%s: exit(%d)\n", &thread_current ()->name, args[1]);
       thread_exit ();
-  } else if (args[0] == SYS_HALT) {
+  } 
+  else if (args[0] == SYS_HALT) {
       shutdown_power_off();
-  } else if(args[0] == SYS_PRACTICE) {
+  } else if (args[0] == SYS_PRACTICE) {
       f->eax = args[1] + 1;
   } else if (args[0] == SYS_CREATE) {
-  	  const char *file = args[1];
+  	  const char *file = (char * ) args[1];
   	  unsigned initial_size = args[2];
   	  f->eax = create_helper(file, initial_size);
   } else if (args[0] == SYS_WRITE) {
       int fd = args[1];
       const void *buffer = args[2];
-      unsigned int size = args[3];
-      f->eax = write_helper(fd, buffer, size);
+      unsigned size = args[3];
+      if (fd == 1) {
+      	putbuf ((const char *) args[2], size);
+      	f->eax = size;
+      } else {
+      	f->eax = write_helper(fd, buffer, size);
+      }
   } else if (args[0] == SYS_OPEN) {
-  	  const char *file_name = args[1];
+  	  const char *file_name = (char *) args[1];
   	  f->eax = open_helper(file_name);
   } else if (args[0] == SYS_REMOVE) {
-  	  
+  	  const char *file_name = (char * ) args[1];
+  	  f->eax = remove_helper(file_name);
   } else if (args[0] == SYS_READ) {
-  	  
+  	  int fd = args[1];
+  	  unsigned size = args[3];
+  	  if (fd == 0) {
+  	  	uint8_t *buffer = (uint8_t * ) args[2];
+  	  	for (unsigned i = 0; i < size; i++) {
+  	  		buffer[i] = input_getc();
+  	  	}
+  	  	f->eax = size;
+  	  } else {
+  	  	void *buffer = (void *) args[2];
+  	  	f->eax = read_helper(fd, buffer, size);
+  	  }
   } else if (args[0] == SYS_SEEK) {
-  	  
+  	  int fd = args[1];
+  	  unsigned position = args[2];
+  	  seek_helper(fd, position);
   } else if (args[0] == SYS_TELL) {
-  	  
+  	  int fd = args[1];
+  	  f->eax = tell_helper(fd);
   } else if (args[0] == SYS_CLOSE) {
-  	  
-  } else if (args[0] == SYS_CLOSE) {
-  	  
-  } 
+  	  int fd = args[1];
+  	  close_helper(fd); 
+  }
 }

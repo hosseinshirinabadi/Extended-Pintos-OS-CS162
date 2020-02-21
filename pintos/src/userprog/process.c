@@ -25,7 +25,7 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
 char *argv[1024];
 int argc;
-//static int arg_length = 0;
+static int arg_length = 0;
 
 void parser(char *file_name) {
   char *token;
@@ -38,7 +38,7 @@ void parser(char *file_name) {
     i += 1;
     total_size++;
     copyFileName = NULL;
-    //arg_length += (strlen(token) + 1);
+    arg_length += (strlen(token) + 1);
   }
   argv[i] = "\0";
   argc = total_size;
@@ -466,30 +466,29 @@ setup_stack (void **esp)
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
+      if (success) {
         *esp = PHYS_BASE;
 
         int args_addresses[argc];
         int args_length = 0;
 
         for (int i = argc - 1; i >= 0; i--) {
-          //printf("%s ALLOOOOO\n", argv[i]);
           args_length += (strlen(argv[i]) + 1);
           *esp -= strlen(argv[i]) + 1;
           memcpy(*esp, argv[i], strlen(argv[i]) + 1);
           args_addresses[i] = *esp;
         }
 
-        uint32_t pad = (*(uint32_t*)esp - ((argc + 1) *4 + 8)) % 16;
+        uint32_t pad = (*(uint32_t*)esp - ((argc + 1) * 4 + 8)) % 16;
 
-        // uint8_t aligner = 0;
-        // for (int i = 0; i < pad; i++) {
-        //    *esp -= 1;
-        //    memcpy(*esp, &aligner, sizeof(char));
-        //    // **(uint32_t **)esp = (uint8_t) 0x00;
-        // }
+        uint8_t aligner = 0;
+        for (int i = 0; i < pad; i++) {
+           *esp -= 1;
+           memcpy(*esp, &aligner, sizeof(char));
+           // **(uint32_t **)esp = (uint8_t) 0x00;
+        }
 
-        *esp -= 4 - args_length % 4;
+        // *esp -= 4 - arg_length % 4;
 
         for (int i = argc; i >= 0; i--) {
           *esp -= 4;
@@ -508,6 +507,7 @@ setup_stack (void **esp)
 
       } else {
         palloc_free_page (kpage);
+      }
     }
   return success;
 }
