@@ -23,8 +23,27 @@ static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
-static char *argv[];
-static int argc;
+char *argv[1024];
+int argc;
+//static int arg_length = 0;
+
+void parser(char *file_name) {
+  char *token;
+  char *rest;
+  char *copyFileName = file_name;
+  int i = 0;
+  int total_size = 0;
+  while (token =  strtok_r(copyFileName, " ", &rest)) {
+    argv[i] = token;
+    i += 1;
+    total_size++;
+    copyFileName = NULL;
+    //arg_length += (strlen(token) + 1);
+  }
+  argv[i] = "\0";
+  argc = total_size;
+}
+
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -36,6 +55,9 @@ process_execute (const char *file_name)
   char *fn_copy;
   tid_t tid;
 
+  parser(file_name);
+  char *command = argv[0];
+
   sema_init (&temporary, 0);
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -45,7 +67,7 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (command, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   return tid;
@@ -445,8 +467,46 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE + 12;
-      else
+        *esp = PHYS_BASE;
+
+        int args_addresses[argc];
+        int args_length = 0;
+
+        for (int i = argc - 1; i >= 0; i--) {
+          //printf("%s ALLOOOOO\n", argv[i]);
+          args_length += (strlen(argv[i]) + 1);
+          *esp -= strlen(argv[i]) + 1;
+          memcpy(*esp, argv[i], strlen(argv[i]) + 1);
+          args_addresses[i] = *esp;
+        }
+
+        uint32_t pad = (*(uint32_t*)esp - ((argc + 1) *4 + 8)) % 16;
+
+        // uint8_t aligner = 0;
+        // for (int i = 0; i < pad; i++) {
+        //    *esp -= 1;
+        //    memcpy(*esp, &aligner, sizeof(char));
+        //    // **(uint32_t **)esp = (uint8_t) 0x00;
+        // }
+
+        *esp -= 4 - args_length % 4;
+
+        for (int i = argc; i >= 0; i--) {
+          *esp -= 4;
+          memcpy(*esp, &args_addresses[i], sizeof(int));
+        }
+
+        *esp -= 4;
+        memcpy(*esp, *esp + 4, sizeof(int));
+
+        *esp -= 4;
+        **(uint32_t **)esp = argc;
+        // memcpy(*esp, argc, sizeof(int));
+
+        *esp -= 4;
+        **(uint32_t **)esp = 0;
+
+      } else {
         palloc_free_page (kpage);
     }
   return success;
@@ -473,18 +533,3 @@ install_page (void *upage, void *kpage, bool writable)
 }
 
 
-char ** parser(char *file_name) {
-  struct list my_list;
-  list_init(&my_list);
-  char *token;
-  char *rest = file_name;
-  while (token =  strtok_r(rest, " ", &rest))) {
-    exec_arg_t *newarg = (exec_arg_t *) malloc(sizeof(exec_arg_t));
-    newarg -> word = token+"\0";
-    list_push_back(my_list, &(newarg->elem));
-  }
-  exec_arg_t *lastnull = (exec_arg_t *) malloc(sizeof(exec_arg_t));
-  lastnull -> word = "\0";
-  list_push_back(my_list, &(lastnull->elem));
-  return &(my_list);
-}

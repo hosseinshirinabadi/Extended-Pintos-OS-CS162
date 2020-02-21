@@ -34,7 +34,7 @@ bool create_helper (const char *file, unsigned initial_size) {
 }
 
 int open_helper (const char *file) {
-	lock_acquire(&flock);
+	// lock_acquire(&flock);
 	struct file *opened_file = filesys_open(file);
 	if (opened_file) {
 		struct thread *current_thread = thread_current();
@@ -59,14 +59,14 @@ int filesize_helper (int fd) {
 	}
 }
 
-int write_helper (int fd, const void *buffer, unsigned size) {
+int write_helper (int fd, const void *buffer, unsigned int size) {
 	open_file *file = get_file(fd);
 	if (file) {
 		if (fd == 1) {
-			putbuf (buffer, size);
+			putbuf ((const char *) buffer, size);
     		return size;
 		} else {
-			return file_write(file, buffer, size);
+			return file_write(file, (const void * ) buffer, size);
 		}
 	} else {
 		return 0;
@@ -106,13 +106,11 @@ syscall_handler (struct intr_frame *f UNUSED)
   	  const char *file = args[1];
   	  unsigned initial_size = args[2];
   	  f->eax = create_helper(file, initial_size);
-
   } else if (args[0] == SYS_WRITE) {
       int fd = args[1];
       const void *buffer = args[2];
-      unsigned size = args[3];
+      unsigned int size = args[3];
       f->eax = write_helper(fd, buffer, size);
-
   } else if (args[0] == SYS_OPEN) {
   	  const char *file_name = args[1];
   	  f->eax = open_helper(file_name);
