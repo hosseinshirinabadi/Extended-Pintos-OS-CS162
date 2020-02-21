@@ -3,6 +3,7 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "devices/shutdown.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -102,6 +103,10 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = args[1];
       printf ("%s: exit(%d)\n", &thread_current ()->name, args[1]);
       thread_exit ();
+  } else if (args[0] == SYS_HALT) {
+      shutdown_power_off();
+  } else if(args[0] == SYS_PRACTICE) {
+      f->eax = args[1] + 1;
   } else if (args[0] == SYS_CREATE) {
   	  const char *file = args[1];
   	  unsigned initial_size = args[2];
@@ -114,14 +119,13 @@ syscall_handler (struct intr_frame *f UNUSED)
   } else if (args[0] == SYS_OPEN) {
   	  const char *file_name = args[1];
   	  f->eax = open_helper(file_name);
-
   } else if (args[0] == SYS_REMOVE) {
   	  
-  }  else if (args[0] == SYS_READ) {
+  } else if (args[0] == SYS_READ) {
   	  
-  }  else if (args[0] == SYS_SEEK) {
+  } else if (args[0] == SYS_SEEK) {
   	  
-  }  else if (args[0] == SYS_TELL) {
+  } else if (args[0] == SYS_TELL) {
   	  
   } else if (args[0] == SYS_CLOSE) {
   	  
