@@ -468,3 +468,20 @@ install_page (void *upage, void *kpage, bool writable)
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
+
+
+char ** parser(char *file_name) {
+  struct list my_list;
+  list_init(&my_list);
+  char *token;
+  char *rest = file_name;
+  while (token =  strtok_r(rest, " ", &rest))) {
+    exec_arg_t *newarg = (exec_arg_t *) malloc(sizeof(exec_arg_t));
+    newarg -> word = token+"\0";
+    list_push_back(my_list, &(newarg->elem));
+  }
+  exec_arg_t *lastnull = (exec_arg_t *) malloc(sizeof(exec_arg_t));
+  lastnull -> word = "\0";
+  list_push_back(my_list, &(lastnull->elem));
+  return &(my_list);
+}
