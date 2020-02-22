@@ -1,11 +1,13 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "devices/shutdown.h"
-
-static void syscall_handler (struct intr_frame *);
+#include "threads/vaddr.h"
+#include "filesys/file.h"
+#include "filesys/filesys.h"
 
 typedef struct file_status {
     int fd;
@@ -13,6 +15,19 @@ typedef struct file_status {
     struct file *file;
     struct list_elem elem;
 } open_file;
+
+static void syscall_handler (struct intr_frame *);
+static open_file *get_file_by_fd (int fd);
+static bool create_helper (const char *file, unsigned initial_size);
+static void close_helper(int fd);
+static unsigned tell_helper(int fd);
+static void seek_helper(int fd, unsigned position);
+static int read_helper(int fd, void *buffer, unsigned size);
+static bool remove_helper(const char *file_name);
+static int write_helper (int fd, const void *buffer, unsigned size);
+static int filesize_helper (int fd);
+static int open_helper (const char *file);
+
 
 // global lock for file system level
 struct lock flock;
@@ -30,26 +45,13 @@ open_file *get_file_by_fd (int fd) {
   	return NULL;
 }
 
-open_file *get_file_by_name (const char *file_name) {
-	struct list_elem *e;
-	struct thread *current_thread = thread_current();
-	for (e = list_begin(&current_thread->files); e != list_end(&current_thread->files); e = list_next(e)) {
-	    open_file *current_file = list_entry(e, open_file, elem);
-	    if (current_file->file_name == file_name) {
-	    	return current_file;
-	    }
-  	}
-  	return NULL;
-}
-
-
 
 bool create_helper (const char *file, unsigned initial_size) {
 	return filesys_create (file, initial_size);
 }
 
 int open_helper (const char *file) {
-	// lock_acquire(&flock);
+	lock_acquire(&flock);
 	struct file *opened_file = filesys_open(file);
 	if (opened_file) {
 		struct thread *current_thread = thread_current();
@@ -59,6 +61,7 @@ int open_helper (const char *file) {
 		file_element->file_name = file;
 		file_element->file = opened_file;
 		list_push_back(&current_thread->files, &file_element->elem);
+		lock_release(&flock);
 		return fd;
 	} else {
 		return -1;
@@ -66,58 +69,77 @@ int open_helper (const char *file) {
 }
 
 int filesize_helper (int fd) {
+	lock_acquire(&flock);
 	open_file *found_file = get_file_by_fd(fd);
 	if (found_file) {
-		return file_length (found_file->file);
+		int length = file_length (found_file->file);
+		lock_release(&flock);
+		return length;
 	} else {
 		return -1;
 	}
 }
 
 int write_helper (int fd, const void *buffer, unsigned size) {
+	lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
 	if (file) {
-		return file_write(file, (const void * ) buffer, size);
+		int bytes_written = file_write(file->file, (const void * ) buffer, size);
+		lock_release(&flock);
+		return bytes_written;
 	} else {
 		return 0;
 	}
 }
 
 bool remove_helper(const char *file_name) {
-	return filesys_remove(file_name);
+	lock_acquire(&flock);
+	bool success = filesys_remove(file_name);
+	lock_release(&flock);
+	return success;
 }
 
 int read_helper(int fd, void *buffer, unsigned size) {
+	lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
 	if (file) {
-		return file_read(file->file, buffer, size);
+		int bytes_read = file_read(file->file, buffer, size);
+		lock_release(&flock);
+		return bytes_read;
 	} else {
 		return -1;
 	}
 }
 
 void seek_helper(int fd, unsigned position) {
+	lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
 	if (file) {
 		file_seek (file->file, position);
+		lock_release(&flock);
 	}
 }
 
 unsigned tell_helper(int fd) {
+	lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
 	if (file) {
-		return file_tell(file->file);
+		unsigned position = file_tell(file->file);
+		lock_release(&flock);
+		return position;
 	} else {
 		return 0;
 	}
 }
 
 void close_helper(int fd) {
+	lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
 	if (file) {
 		list_remove(&file->elem);
 		file_close(file->file);
 		free(file);
+		lock_release(&flock);
 	}
 }
 
@@ -143,7 +165,7 @@ syscall_handler (struct intr_frame *f UNUSED)
    * include it in your final submission.
    */
 
-  /* printf("System call number: %d\n", args[0]); */
+  // printf("System call number: %d\n", args[0]);
 
   if (args[0] == SYS_EXIT) {
       f->eax = args[1];
@@ -160,10 +182,12 @@ syscall_handler (struct intr_frame *f UNUSED)
   	  f->eax = create_helper(file, initial_size);
   } else if (args[0] == SYS_WRITE) {
       int fd = args[1];
-      const void *buffer = args[2];
+      const void *buffer = (void *) args[2];
       unsigned size = args[3];
       if (fd == 1) {
+      	lock_acquire(&flock);
       	putbuf ((const char *) args[2], size);
+      	lock_release(&flock);
       	f->eax = size;
       } else {
       	f->eax = write_helper(fd, buffer, size);
@@ -174,14 +198,19 @@ syscall_handler (struct intr_frame *f UNUSED)
   } else if (args[0] == SYS_REMOVE) {
   	  const char *file_name = (char * ) args[1];
   	  f->eax = remove_helper(file_name);
+  } else if (args[0] == SYS_FILESIZE) {
+  	  int fd = args[1];
+  	  f->eax = filesize_helper(fd);
   } else if (args[0] == SYS_READ) {
   	  int fd = args[1];
   	  unsigned size = args[3];
   	  if (fd == 0) {
+  	  	lock_acquire(&flock);
   	  	uint8_t *buffer = (uint8_t * ) args[2];
   	  	for (unsigned i = 0; i < size; i++) {
   	  		buffer[i] = input_getc();
   	  	}
+  	  	lock_release(&flock);
   	  	f->eax = size;
   	  } else {
   	  	void *buffer = (void *) args[2];
