@@ -144,7 +144,9 @@ void close_helper (int fd) {
 }
 
 bool validate_arg (void *arg) {
-	return arg != NULL && is_user_vaddr((uint32_t *) arg);
+	struct thread *current_thread = thread_current ();
+	return arg != NULL && is_user_vaddr((uint32_t *) arg) &&
+		   pagedir_get_page (current_thread->pagedir, arg) != NULL;
 }
 
 
