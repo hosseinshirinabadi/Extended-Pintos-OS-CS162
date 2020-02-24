@@ -269,6 +269,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
       goto done;
     }
 
+  file_deny_write(file);
+
   /* Read program headers. */
   file_ofs = ehdr.e_phoff;
   for (i = 0; i < ehdr.e_phnum; i++)
@@ -339,6 +341,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
+  file_allow_write(file);
   file_close (file);
   return success;
 }
