@@ -27,6 +27,7 @@ static bool remove_helper(const char *file_name);
 static int write_helper (int fd, const void *buffer, unsigned size);
 static int filesize_helper (int fd);
 static int open_helper (const char *file);
+// static bool validate_arg (void *arg);
 
 
 // global lock for file system level
@@ -64,6 +65,7 @@ int open_helper (const char *file) {
 		lock_release(&flock);
 		return fd;
 	} else {
+		lock_release(&flock);
 		return -1;
 	}
 }
@@ -76,6 +78,7 @@ int filesize_helper (int fd) {
 		lock_release(&flock);
 		return length;
 	} else {
+		lock_release(&flock);
 		return -1;
 	}
 }
@@ -84,10 +87,13 @@ int write_helper (int fd, const void *buffer, unsigned size) {
 	lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
 	if (file) {
+		// file_deny_write(file->file);
 		int bytes_written = file_write(file->file, (const void * ) buffer, size);
 		lock_release(&flock);
+		// file_allow_write(file->file);
 		return bytes_written;
 	} else {
+		lock_release(&flock);
 		return 0;
 	}
 }
@@ -107,6 +113,7 @@ int read_helper (int fd, void *buffer, unsigned size) {
 		lock_release(&flock);
 		return bytes_read;
 	} else {
+		lock_release(&flock);
 		return -1;
 	}
 }
@@ -116,6 +123,8 @@ void seek_helper (int fd, unsigned position) {
 	open_file *file = get_file_by_fd(fd);
 	if (file) {
 		file_seek (file->file, position);
+		lock_release(&flock);
+	} else {
 		lock_release(&flock);
 	}
 }
@@ -128,6 +137,7 @@ unsigned tell_helper (int fd) {
 		lock_release(&flock);
 		return position;
 	} else {
+		lock_release(&flock);
 		return -1;
 	}
 }
@@ -140,13 +150,20 @@ void close_helper (int fd) {
 		file_close(file->file);
 		free(file);
 		lock_release(&flock);
+	} else {
+		lock_release(&flock);
 	}
 }
 
+// bool validate_pointer (uint32_t *ptr) {
+// 	struct thread *current_thread = thread_current ();
+// 	return ptr != NULL && is_user_vaddr(ptr) &&
+// 		   pagedir_get_page (current_thread->pagedir, ptr) != NULL;
+// }
+
 bool validate_arg (void *arg) {
 	struct thread *current_thread = thread_current ();
-	return arg != NULL && is_user_vaddr((uint32_t *) arg) &&
-		   pagedir_get_page (current_thread->pagedir, arg) != NULL;
+	return arg != NULL && is_user_vaddr(arg) && pagedir_get_page (current_thread->pagedir, arg) != NULL ;
 }
 
 
@@ -164,7 +181,8 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   uint32_t* args = ((uint32_t*) f->esp);
 
-  if (!validate_arg(args )) {
+
+  if (!validate_arg(args) || !validate_arg(args + 1) || !validate_arg(args + 2) || !validate_arg(args + 3)) {
   	  f->eax = -1;
       printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
       thread_exit ();
@@ -190,12 +208,26 @@ syscall_handler (struct intr_frame *f UNUSED)
       shutdown_power_off();
 
   } else if (args[0] == SYS_PRACTICE) {
-      f->eax = args[1] + 1;
+      f->eax = args[1] + 1; 
+
+  } else if (args[0] == SYS_EXEC) {
+  	  // const char *cmd_line = args[1];
+  	  // if (validate_arg(cmd_line)) {
+
+  	  // } else {
+  	  // 	  f->eax = -1;
+	    //   printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+	    //   thread_exit ();
+  	  // }
+
+  } else if (args[0] == SYS_WAIT) {
+  	  // pid_t pid = args[1];
+
 
   } else if (args[0] == SYS_CREATE) {
   	  const char *file = (char * ) args[1];
   	  unsigned initial_size = args[2];
-  	  if (!validate_arg(file)) {
+  	  if (!validate_arg(args[1])) {
   	  	  f->eax = -1;
 	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	      thread_exit ();
@@ -207,7 +239,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       int fd = args[1];
       const void *buffer = (void *) args[2];
       unsigned size = args[3];
-      if (fd < 0 || !validate_arg(buffer)) {
+      if (fd < 0 || !validate_arg(args[2])) {
       	  f->eax = -1;
 	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	      thread_exit ();
@@ -224,7 +256,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   } else if (args[0] == SYS_OPEN) {
   	  const char *file_name = (char *) args[1];
-  	  if (validate_arg(file_name)) {
+  	  if (validate_arg(args[1])) {
   	  	  f->eax = open_helper(file_name);
   	  } else {
   	  	  f->eax = -1;
@@ -234,7 +266,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   } else if (args[0] == SYS_REMOVE) {
   	  const char *file_name = (char * ) args[1];
-  	  if (validate_arg(file_name)) {
+  	  if (validate_arg(args[1])) {
   	  	  f->eax = remove_helper(file_name);
   	  } else {
   	  	  f->eax = -1;
@@ -255,7 +287,8 @@ syscall_handler (struct intr_frame *f UNUSED)
   } else if (args[0] == SYS_READ) {
   	  int fd = args[1];
   	  unsigned size = args[3];
-  	  if (!validate_arg((void *) args[2])) {
+  	  // if (!validate_arg((void *) args[2])) {
+  	  if (!validate_arg(args[2])) {
 		f->eax = -1;
 	    printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	    thread_exit ();
