@@ -143,7 +143,7 @@ syscall_handler (struct intr_frame *f UNUSED)
    * include it in your final submission.
    */
 
-  /* printf("System call number: %d\n", args[0]); */
+   printf("System call number: %d\n", args[0]); 
 
   if (args[0] == SYS_EXIT) {
       f->eax = args[1];
