@@ -164,7 +164,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   uint32_t* args = ((uint32_t*) f->esp);
 
-  if (!validate_arg(args)) {
+  if (!validate_arg(args )) {
   	  f->eax = -1;
       printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
       thread_exit ();
