@@ -22,25 +22,22 @@
 static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static void parser(char *file_name);
 
 char *argv[1024];
 int argc;
-static int arg_length = 0;
 
 void parser(char *file_name) {
   char *token;
   char *rest;
-  char *copyFileName = file_name;
   int i = 0;
   int total_size = 0;
-  while (token =  strtok_r(copyFileName, " ", &rest)) {
+  for (token = strtok_r(file_name, " ", &rest); token != NULL; token = strtok_r(NULL, " ", &rest)) {
     argv[i] = token;
     i += 1;
     total_size++;
-    copyFileName = NULL;
-    arg_length += (strlen(token) + 1);
   }
-  argv[i] = "\0";
+  argv[i] = '\0';
   argc = total_size;
 }
 
@@ -476,7 +473,7 @@ setup_stack (void **esp)
           args_length += (strlen(argv[i]) + 1);
           *esp -= strlen(argv[i]) + 1;
           memcpy(*esp, argv[i], strlen(argv[i]) + 1);
-          args_addresses[i] = *esp;
+          args_addresses[i] = *(uint32_t*)esp;
         }
 
         uint32_t pad = (*(uint32_t*)esp - ((argc + 1) * 4 + 8)) % 16;
@@ -488,19 +485,23 @@ setup_stack (void **esp)
            // **(uint32_t **)esp = (uint8_t) 0x00;
         }
 
-        // *esp -= 4 - arg_length % 4;
+        // *esp -= 4 - args_length % 4;
 
-        for (int i = argc; i >= 0; i--) {
+        *esp -= 4;
+        **(uint32_t **)esp = 0;
+
+        for (int i = argc - 1; i >= 0; i--) {
           *esp -= 4;
           memcpy(*esp, &args_addresses[i], sizeof(int));
         }
 
+        uint32_t *old_esp = *esp;
         *esp -= 4;
-        memcpy(*esp, *esp + 4, sizeof(int));
+        // memcpy(*esp, *(uint32_t*)esp + 4, sizeof(int));
+        memcpy(*esp, &old_esp, sizeof(int));
 
         *esp -= 4;
         **(uint32_t **)esp = argc;
-        // memcpy(*esp, argc, sizeof(int));
 
         *esp -= 4;
         **(uint32_t **)esp = 0;
