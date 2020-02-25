@@ -140,6 +140,7 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  
   sema_up (&temporary);
 }
 
@@ -269,8 +270,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
       goto done;
     }
 
-  file_deny_write(file);
-
   /* Read program headers. */
   file_ofs = ehdr.e_phoff;
   for (i = 0; i < ehdr.e_phnum; i++)
@@ -336,13 +335,15 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
-
   success = true;
+
+  file_deny_write(file);
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_allow_write(file);
-  file_close (file);
+  if (!success) {
+    file_close (file);
+  }
   return success;
 }
 
