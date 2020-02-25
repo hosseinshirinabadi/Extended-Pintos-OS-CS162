@@ -155,16 +155,10 @@ void close_helper (int fd) {
 	}
 }
 
-bool validate_pointer (uint32_t *ptr) {
+bool validate_arg (void *arg) {
 	struct thread *current_thread = thread_current ();
-	return ptr != NULL && is_user_vaddr(ptr) &&
-		   pagedir_get_page(current_thread->pagedir, ptr) != NULL;
-}
-
-bool validate_arg (char *arg) {
-	// struct thread *current_thread = thread_current ();
-	// return arg != NULL && is_user_vaddr(arg) && pagedir_get_page (current_thread->pagedir, arg) != NULL ;
-  return validate_pointer((uint32_t *) arg) && *arg != "";
+  uint32_t *ptr = (uint32_t *) arg;
+  return arg != NULL && is_user_vaddr(ptr) && pagedir_get_page (current_thread->pagedir, ptr) != NULL;
 }
 
 
@@ -182,9 +176,8 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   uint32_t* args = ((uint32_t*) f->esp);
 
-
-  if (!validate_pointer((uint32_t*)args) || !validate_pointer((uint32_t*)(args + 1)) || 
-      !validate_pointer((uint32_t*)(args + 2)) || !validate_pointer((uint32_t*)(args + 3))) {
+  if (!validate_arg(args) || !validate_arg((args + 1)) || 
+      !validate_arg((args + 2)) || !validate_arg((args + 3))) {
   	    f->eax = -1;
         printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
         thread_exit ();
@@ -241,7 +234,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       int fd = args[1];
       const void *buffer = (void *) args[2];
       unsigned size = args[3];
-      if (fd < 0 || !validate_arg((char *) buffer)) {
+      if (fd < 0 || !validate_arg(buffer)) {
       	  f->eax = -1;
 	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	      thread_exit ();
