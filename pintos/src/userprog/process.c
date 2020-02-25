@@ -18,11 +18,19 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/syscall.h"
 
 static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static void parser(char *file_name);
+
+typedef struct file_status {
+    int fd;
+    char *file_name;
+    struct file *file;
+    struct list_elem elem;
+} open_file;
 
 char *argv[1024];
 int argc;
@@ -141,6 +149,13 @@ process_exit (void)
       pagedir_destroy (pd);
     }
   sema_up (&temporary);
+  struct list files_list = cur->files;
+  struct list_elem *e;
+  for (e = list_begin(&files_list); e != list_end(&files_list); e = list_next(e)) {
+      open_file *current_file = list_entry(e, open_file, elem);
+      file_allow_write(current_file->file);
+      file_close(current_file->file);
+    }
 }
 
 /* Sets up the CPU for running user code in the current
@@ -341,7 +356,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_allow_write(file);
+  // file_allow_write(file);
   file_close (file);
   return success;
 }
