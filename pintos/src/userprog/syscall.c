@@ -181,6 +181,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   uint32_t* args = ((uint32_t*) f->esp);
 
+
   if (!validate_arg(args) || !validate_arg(args + 1) || !validate_arg(args + 2) || !validate_arg(args + 3)) {
   	  f->eax = -1;
       printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
@@ -194,7 +195,9 @@ syscall_handler (struct intr_frame *f UNUSED)
    * include it in your final submission.
    */
 
+
   // printf("System call number: %d\n", args[0]);
+
 
   if (args[0] == SYS_EXIT) {
       f->eax = args[1];
