@@ -206,14 +206,14 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = args[1] + 1; 
 
   } else if (args[0] == SYS_EXEC) {
-  	  // const char *cmd_line = args[1];
-  	  // if (validate_arg(cmd_line)) {
-
-  	  // } else {
-  	  // 	  f->eax = -1;
-	    //   printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-	    //   thread_exit ();
-  	  // }
+  	  const char *cmd_line = args[1];
+  	  if (validate_arg(cmd_line)) {
+        f->eax = process_execute(cmd_line);
+  	  } else {
+  	  	f->eax = -1;
+	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+	      thread_exit ();
+  	  }
 
   } else if (args[0] == SYS_WAIT) {
   	  // pid_t pid = args[1];

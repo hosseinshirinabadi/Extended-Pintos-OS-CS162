@@ -19,6 +19,8 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
+// #include <unistd.h>
+// #include <sys/types.h>
 
 static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
@@ -31,6 +33,13 @@ typedef struct file_status {
     struct file *file;
     struct list_elem elem;
 } open_file;
+
+typedef struct child_status {
+    int status;
+    struct semaphore sem;
+    struct thread *thread;
+    struct list_elem elem;
+} child;
 
 char *argv[1024];
 int argc;
@@ -75,6 +84,7 @@ process_execute (const char *file_name)
   tid = thread_create (command, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
+    return -1;
   return tid;
 }
 
