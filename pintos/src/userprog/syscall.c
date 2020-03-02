@@ -9,13 +9,14 @@
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "lib/user/syscall.h"
+#include "userprog/process.h"
 
-typedef struct file_status {
-    int fd;
-    char *file_name;
-    struct file *file;
-    struct list_elem elem;
-} open_file;
+// typedef struct file_status {
+//     int fd;
+//     char *file_name;
+//     struct file *file;
+//     struct list_elem elem;
+// } open_file;
 
 static void syscall_handler (struct intr_frame *);
 static open_file *get_file_by_fd (int fd);
@@ -197,6 +198,11 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   if (args[0] == SYS_EXIT) {
       f->eax = args[1];
+      struct thread *cur = thread_current();
+      if (cur->parent_thread != NULL) {
+        child *child_status = find_child(cur->parent_thread, cur->tid);
+        child_status->exit_code = args[1];
+      }
       printf ("%s: exit(%d)\n", &thread_current ()->name, args[1]);
       thread_exit ();
   } 

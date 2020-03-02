@@ -22,25 +22,11 @@
 #include "lib/user/syscall.h"
 
 
-static struct semaphore temporary;
+// static struct semaphore temporary;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static void parser(char *file_name);
 
-typedef struct file_status {
-    int fd;
-    char *file_name;
-    struct file *file;
-    struct list_elem elem;
-} open_file;
-
-typedef struct child_status {
-    pid_t pid;  // child pid
-    bool isLoaded;  // true if executable loaded successfully, false otherwise
-    int exit_code;  // Child exit code, if dead.
-    struct semaphore sem;
-    struct list_elem elem;
-} child;
 
 struct args_struct {
   char *cmd_line;
@@ -64,8 +50,8 @@ void parser(char *file_name) {
   argc = total_size;
 }
 
-child *get_child(tid_t child_pid) {
-  struct list children = thread_current()->children;
+child *find_child(struct thread *t, tid_t child_pid) {
+  struct list children = t->children;
   struct list_elem *e;
   for (e = list_begin(&children); e != list_end(&children); e = list_next(e)) {
     child *current_child = list_entry(e, child, elem);
@@ -87,7 +73,7 @@ process_execute (const char *file_name)
   char *fn_copy;
   tid_t tid;
 
-  sema_init (&temporary, 0);
+  // sema_init (&temporary, 0);
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -130,8 +116,7 @@ process_execute (const char *file_name)
       return -1;
     }
   }
-  return tid;
-  
+  // return tid;
 }
 
 /* A thread function that loads a user process and starts it
@@ -185,11 +170,20 @@ start_process (void *args)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED)
+process_wait (tid_t child_tid)
 {
-  sema_down (&temporary);
-
-  return 0;
+  // sema_down (&temporary);
+  int exit_status = -1;
+  child *wait_child = find_child(thread_current(), child_tid);
+  if (!wait_child) {
+    return exit_status;
+  }
+  sema_down(&wait_child->sem);
+  exit_status = wait_child->exit_code;
+  list_remove(&wait_child->elem);
+  free(wait_child);
+  return exit_status;
+  // return 0;
 }
 
 /* Free the current process's resources. */
@@ -215,14 +209,27 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  sema_up (&temporary);
-  // struct list files_list = cur->files;
-  // struct list_elem *e;
-  // for (e = list_begin(&files_list); e != list_end(&files_list); e = list_next(e)) {
-  //     open_file *current_file = list_entry(e, open_file, elem);
-  //     file_allow_write(current_file->file);
-  //     file_close(current_file->file);
-  //   }
+  // sema_up (&temporary);
+
+  struct list *current_files = &cur->files;
+  while (!list_empty(current_files)) {
+    struct list_elem *e = list_pop_back(current_files);
+    open_file *current_file = list_entry(e, open_file, elem);
+    file_close(current_file->file);
+    free(current_file);
+  }
+
+  struct list *current_children = &cur->children;
+  while (!list_empty(current_children)) {
+    struct list_elem *e = list_pop_back(current_children);
+    child *current_child = list_entry(e, child, elem);
+    free(current_child);
+  }
+
+  struct thread *parent = cur->parent_thread;
+  child *child_status = find_child(parent, cur->tid);
+
+  sema_up(&child_status->sem);
 }
 
 /* Sets up the CPU for running user code in the current
