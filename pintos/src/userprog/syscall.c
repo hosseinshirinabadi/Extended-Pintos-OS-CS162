@@ -1,6 +1,7 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -214,18 +215,34 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   } else if (args[0] == SYS_EXEC) {
   	  const char *cmd_line = args[1];
-  	  if (validate_arg(cmd_line)) {
-        f->eax = process_execute(cmd_line);
+      // char *buffer = malloc(strlen(cmd_line) + 1);
+      // strlcpy(buffer, cmd_line, sizeof(buffer));
+      // while (*buffer != '\0') {
+      //   if (!validate_arg(buffer)) {
+      //     f->eax = -1;
+      //     printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+      //     thread_exit ();
+      //   }
+      //   buffer = buffer + 1;
+      // }
+      // f->eax = process_execute(cmd_line);
+
+  	  if (!validate_arg(cmd_line) || !validate_arg(cmd_line + 1)) {
+        f->eax = -1;
+        printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+        thread_exit ();
   	  } else {
-  	  	f->eax = -1;
-	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-	      thread_exit ();
+        f->eax = process_execute(cmd_line);
   	  }
 
   } else if (args[0] == SYS_WAIT) {
   	  pid_t pid = args[1];
+      child *wait_child = find_child(thread_current(), args[1]);
+      if (wait_child == NULL) {
+        f->eax = -1;
+        thread_exit ();
+      }
       f->eax = process_wait(pid);
-
 
   } else if (args[0] == SYS_CREATE) {
   	  const char *file = (char * ) args[1];
