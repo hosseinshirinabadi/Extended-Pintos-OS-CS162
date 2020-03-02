@@ -1,6 +1,7 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -8,13 +9,15 @@
 #include "threads/vaddr.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "lib/user/syscall.h"
+#include "userprog/process.h"
 
-typedef struct file_status {
-    int fd;
-    char *file_name;
-    struct file *file;
-    struct list_elem elem;
-} open_file;
+// typedef struct file_status {
+//     int fd;
+//     char *file_name;
+//     struct file *file;
+//     struct list_elem elem;
+// } open_file;
 
 static void syscall_handler (struct intr_frame *);
 static open_file *get_file_by_fd (int fd);
@@ -155,15 +158,10 @@ void close_helper (int fd) {
 	}
 }
 
-// bool validate_pointer (uint32_t *ptr) {
-// 	struct thread *current_thread = thread_current ();
-// 	return ptr != NULL && is_user_vaddr(ptr) &&
-// 		   pagedir_get_page (current_thread->pagedir, ptr) != NULL;
-// }
-
 bool validate_arg (void *arg) {
 	struct thread *current_thread = thread_current ();
-	return arg != NULL && is_user_vaddr(arg) && pagedir_get_page (current_thread->pagedir, arg) != NULL ;
+  uint32_t *ptr = (uint32_t *) arg;
+  return arg != NULL && is_user_vaddr(ptr) && pagedir_get_page (current_thread->pagedir, ptr) != NULL;
 }
 
 
@@ -181,11 +179,11 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   uint32_t* args = ((uint32_t*) f->esp);
 
-
-  if (!validate_arg(args) || !validate_arg(args + 1) || !validate_arg(args + 2) || !validate_arg(args + 3)) {
-  	  f->eax = -1;
-      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-      thread_exit ();
+  if (!validate_arg(args) || !validate_arg((args + 1)) || 
+      !validate_arg((args + 2)) || !validate_arg((args + 3))) {
+  	    f->eax = -1;
+        printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+        thread_exit ();
   }
 
   
@@ -202,6 +200,11 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   if (args[0] == SYS_EXIT) {
       f->eax = args[1];
+      struct thread *cur = thread_current();
+      if (cur->parent_thread != NULL) {
+        child *child_status = find_child(cur->parent_thread, cur->tid);
+        child_status->exit_code = args[1];
+      }
       printf ("%s: exit(%d)\n", &thread_current ()->name, args[1]);
       thread_exit ();
   } 
@@ -212,23 +215,40 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = args[1] + 1; 
 
   } else if (args[0] == SYS_EXEC) {
-  	  // const char *cmd_line = args[1];
-  	  // if (validate_arg(cmd_line)) {
+  	  const char *cmd_line = args[1];
+      // char *buffer = malloc(strlen(cmd_line) + 1);
+      // strlcpy(buffer, cmd_line, sizeof(buffer));
+      // while (*buffer != '\0') {
+      //   if (!validate_arg(buffer)) {
+      //     f->eax = -1;
+      //     printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+      //     thread_exit ();
+      //   }
+      //   buffer = buffer + 1;
+      // }
+      // f->eax = process_execute(cmd_line);
 
-  	  // } else {
-  	  // 	  f->eax = -1;
-	    //   printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-	    //   thread_exit ();
-  	  // }
+  	  if (!validate_arg(cmd_line) || !validate_arg(cmd_line + 1)) {
+        f->eax = -1;
+        printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+        thread_exit ();
+  	  } else {
+        f->eax = process_execute(cmd_line);
+  	  }
 
   } else if (args[0] == SYS_WAIT) {
-  	  // pid_t pid = args[1];
-
+  	  pid_t pid = args[1];
+      child *wait_child = find_child(thread_current(), args[1]);
+      if (wait_child == NULL) {
+        f->eax = -1;
+        thread_exit ();
+      }
+      f->eax = process_wait(pid);
 
   } else if (args[0] == SYS_CREATE) {
   	  const char *file = (char * ) args[1];
   	  unsigned initial_size = args[2];
-  	  if (!validate_arg(args[1])) {
+  	  if (!validate_arg(file)) {
   	  	  f->eax = -1;
 	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	      thread_exit ();
@@ -240,7 +260,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       int fd = args[1];
       const void *buffer = (void *) args[2];
       unsigned size = args[3];
-      if (fd < 0 || !validate_arg(args[2])) {
+      if (fd < 0 || !validate_arg(buffer)) {
       	  f->eax = -1;
 	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	      thread_exit ();
@@ -257,7 +277,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   } else if (args[0] == SYS_OPEN) {
   	  const char *file_name = (char *) args[1];
-  	  if (validate_arg(args[1])) {
+  	  if (validate_arg(file_name)) {
   	  	  f->eax = open_helper(file_name);
   	  } else {
   	  	  f->eax = -1;
@@ -267,7 +287,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   } else if (args[0] == SYS_REMOVE) {
   	  const char *file_name = (char * ) args[1];
-  	  if (validate_arg(args[1])) {
+  	  if (validate_arg(file_name)) {
   	  	  f->eax = remove_helper(file_name);
   	  } else {
   	  	  f->eax = -1;
@@ -289,10 +309,10 @@ syscall_handler (struct intr_frame *f UNUSED)
   	  int fd = args[1];
   	  unsigned size = args[3];
   	  // if (!validate_arg((void *) args[2])) {
-  	  if (!validate_arg(args[2])) {
-		f->eax = -1;
-	    printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-	    thread_exit ();
+  	  if (!validate_arg((char *) args[2])) {
+		    f->eax = -1;
+	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+	      thread_exit ();
   	  } else {
   	  	if (fd == 0) {
   	      lock_acquire(&flock);

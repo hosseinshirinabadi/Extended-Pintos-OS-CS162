@@ -183,6 +183,24 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
+  // struct thread *current_thread = thread_current();
+  // struct list_elem e* = list_back(&current_thread->children);
+  // child *new_child = list_entry(e, child, elem);
+  // new_child->parent_thread = current_thread;
+
+  t->parent_thread = thread_current();
+
+  // struct thread *current_thread = thread_current();
+  // child *new_child = malloc(sizeof(child));
+  // if (!new_child) {
+  //   return -1;
+  // }
+  // new_child->pid = tid;
+  // new_child->parent_pid = current_thread->tid;
+  // new_child->isLoaded = false;
+  // sema_init (&new_child->sem, 0);
+
+
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
@@ -470,8 +488,9 @@ init_thread (struct thread *t, const char *name, int priority)
 
   #ifdef USERPROG
   list_init(&t->files);
+  list_init(&t->children);
   t->current_fd = 2;
-  //t->exec_file = NULL;
+  t->parent_thread = NULL;
   #endif
 
 }

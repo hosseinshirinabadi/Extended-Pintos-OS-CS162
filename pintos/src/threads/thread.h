@@ -104,6 +104,12 @@ struct thread
     struct list files;
     // keeps track of the maximum fd created
     int current_fd;
+    // list of children of this thread
+    struct list children;
+    // parent thread
+    struct thread *parent_thread;
+    // executable file
+    struct file *exec_file;
 #endif
 
     /* Owned by thread.c. */
