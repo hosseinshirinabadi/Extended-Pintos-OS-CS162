@@ -8,6 +8,7 @@
 #include "threads/vaddr.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "lib/user/syscall.h"
 
 typedef struct file_status {
     int fd;
@@ -216,7 +217,8 @@ syscall_handler (struct intr_frame *f UNUSED)
   	  }
 
   } else if (args[0] == SYS_WAIT) {
-  	  // pid_t pid = args[1];
+  	  pid_t pid = args[1];
+      f->eax = process_wait(pid);
 
 
   } else if (args[0] == SYS_CREATE) {
