@@ -105,6 +105,8 @@ struct thread
     int current_fd;
     // list of children of this thread
     struct list children;
+    // parent thread
+    struct thread *parent_thread;
 #endif
 
     /* Owned by thread.c. */

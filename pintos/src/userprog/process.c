@@ -226,10 +226,11 @@ process_exit (void)
     free(current_child);
   }
 
-  struct thread *parent = cur->parent_thread;
-  child *child_status = find_child(parent, cur->tid);
-
-  sema_up(&child_status->sem);
+  if (cur->parent_thread != NULL) {
+    struct thread *parent = cur->parent_thread;
+    child *child_status = find_child(parent, cur->tid);
+    sema_up(&child_status->sem);
+  }
 }
 
 /* Sets up the CPU for running user code in the current
