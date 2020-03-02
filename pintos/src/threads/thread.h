@@ -99,6 +99,7 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 
+    //struct file *exec_file;
     // list of open files
     struct list files;
     // keeps track of the maximum fd created

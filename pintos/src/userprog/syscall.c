@@ -188,6 +188,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       thread_exit ();
   }
 
+  
   /*
    * The following print statement, if uncommented, will print out the syscall
    * number whenever a process enters a system call. You might find it useful

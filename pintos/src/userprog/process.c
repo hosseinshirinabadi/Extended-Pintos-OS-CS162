@@ -149,13 +149,6 @@ process_exit (void)
       pagedir_destroy (pd);
     }
   sema_up (&temporary);
-  struct list files_list = cur->files;
-  struct list_elem *e;
-  for (e = list_begin(&files_list); e != list_end(&files_list); e = list_next(e)) {
-      open_file *current_file = list_entry(e, open_file, elem);
-      file_allow_write(current_file->file);
-      file_close(current_file->file);
-    }
 }
 
 /* Sets up the CPU for running user code in the current

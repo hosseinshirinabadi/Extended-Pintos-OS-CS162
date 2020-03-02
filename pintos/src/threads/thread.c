@@ -471,6 +471,7 @@ init_thread (struct thread *t, const char *name, int priority)
   #ifdef USERPROG
   list_init(&t->files);
   t->current_fd = 2;
+  //t->exec_file = NULL;
   #endif
 
 }
