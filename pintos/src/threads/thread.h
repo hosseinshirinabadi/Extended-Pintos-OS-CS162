@@ -31,7 +31,7 @@ typedef struct child_status {
     bool isLoaded;  // true if executable loaded successfully, false otherwise
     int exit_code;  // Child exit code, if dead.
     bool isWaiting;  // whether parent is waiting for this child or not
-    struct semaphore sem;
+    struct semaphore sem;  // semaphore used for waiting and waking up
     struct list_elem elem;
 } child;
 

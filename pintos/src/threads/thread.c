@@ -183,6 +183,7 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
+  // set the parent of the newly created thread to the current thread
   t->parent_thread = thread_current();
 
   /* Stack frame for kernel_thread(). */

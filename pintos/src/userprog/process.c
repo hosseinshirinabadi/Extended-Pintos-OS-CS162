@@ -148,10 +148,10 @@ start_process (void *args)
   child *new_child = arguments->child_struct;
   if (success) {
     new_child->isLoaded = true;
-    sema_up(&new_child->sem);
   } else {
     new_child->isLoaded = false;
   }
+  sema_up(&new_child->sem);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in

@@ -29,6 +29,7 @@ static bool validate_arg (void *arg);
 // global lock for file system level
 struct lock flock;
 
+// finds the open file of the current thread that matches fd
 open_file *get_file_by_fd (int fd) {
 	struct list_elem *e;
 	struct thread *current_thread = thread_current();
@@ -189,7 +190,6 @@ syscall_handler (struct intr_frame *f UNUSED)
       if (cur->parent_thread != NULL) {
         child *child_status = find_child(cur->parent_thread, cur->tid);
         child_status->exit_code = args[1];
-        // child_status->hasExited = true;
       }
       printf ("%s: exit(%d)\n", &thread_current ()->name, args[1]);
       thread_exit ();
@@ -218,11 +218,11 @@ syscall_handler (struct intr_frame *f UNUSED)
   	  const char *file = (char * ) args[1];
   	  unsigned initial_size = args[2];
   	  if (!validate_arg(file)) {
-  	  	  f->eax = -1;
+  	    f->eax = -1;
 	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	      thread_exit ();
   	  } else {
-  	  	  f->eax = create_helper(file, initial_size);
+  	  	f->eax = create_helper(file, initial_size);
   	  }
   	  
   } else if (args[0] == SYS_WRITE) {
@@ -230,11 +230,11 @@ syscall_handler (struct intr_frame *f UNUSED)
       const void *buffer = (void *) args[2];
       unsigned size = args[3];
       if (fd < 0 || !validate_arg(buffer)) {
-      	  f->eax = -1;
+      	f->eax = -1;
 	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	      thread_exit ();
       } else {
-      	  if (fd == 1) {
+      	if (fd == 1) {
 	      	lock_acquire(&flock);
 	      	putbuf ((const char *) args[2], size);
 	      	lock_release(&flock);
@@ -250,16 +250,16 @@ syscall_handler (struct intr_frame *f UNUSED)
   	  	  f->eax = open_helper(file_name);
   	  } else {
   	  	  f->eax = -1;
-	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-	      thread_exit ();
+	        printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+	        thread_exit ();
   	  }
 
   } else if (args[0] == SYS_REMOVE) {
   	  const char *file_name = (char * ) args[1];
   	  if (validate_arg(file_name)) {
-  	  	  f->eax = remove_helper(file_name);
+  	  	f->eax = remove_helper(file_name);
   	  } else {
-  	  	  f->eax = -1;
+  	  	f->eax = -1;
 	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	      thread_exit ();
   	  }
@@ -267,11 +267,11 @@ syscall_handler (struct intr_frame *f UNUSED)
   } else if (args[0] == SYS_FILESIZE) {
   	  int fd = args[1];
   	  if (fd < 0) {
-  	  	  f->eax = -1;
+  	  	f->eax = -1;
 	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	      thread_exit ();
   	  } else {
-  	  	  f->eax = filesize_helper(fd);
+  	  	f->eax = filesize_helper(fd);
   	  }
 
   } else if (args[0] == SYS_READ) {
@@ -286,7 +286,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   	      lock_acquire(&flock);
   	  	  uint8_t *buffer = (uint8_t * ) args[2];
   	  	  for (unsigned i = 0; i < size; i++) {
-  	  		buffer[i] = input_getc();
+  	  		  buffer[i] = input_getc();
   	  	  }
   	  	  lock_release(&flock);
   	  	  f->eax = size;
@@ -295,8 +295,8 @@ syscall_handler (struct intr_frame *f UNUSED)
   	  	  f->eax = read_helper(fd, buffer, size);
   	    } else {
   	  	  f->eax = -1;
-	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-	      thread_exit ();
+	        printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+	        thread_exit ();
   	    }
   	  }
 
@@ -304,35 +304,35 @@ syscall_handler (struct intr_frame *f UNUSED)
   	  int fd = args[1];
   	  unsigned position = args[2];
   	  if (fd < 0) {
-  	  	  f->eax = -1;
+  	  	f->eax = -1;
 	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	      thread_exit ();
   	  } else {
-  	  	  seek_helper(fd, position);
+  	  	seek_helper(fd, position);
   	  }
 
   } else if (args[0] == SYS_TELL) {
   	  int fd = args[1];
   	  if (fd < 0) {
-  	  	  f->eax = -1;
+  	  	f->eax = -1;
 	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	      thread_exit ();
   	  } else {
-  	  	  f->eax = tell_helper(fd);
+  	  	f->eax = tell_helper(fd);
   	  }
 
   } else if (args[0] == SYS_CLOSE) {
   	  int fd = args[1];
   	  if (fd < 0) {
-  	  	  f->eax = -1;
+  	  	f->eax = -1;
 	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	      thread_exit ();
   	  } else {
-  	  	  close_helper(fd); 
+  	  	close_helper(fd); 
   	  }
   	  
   } else {
-  	  f->eax = -1;
+  	f->eax = -1;
 	  printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	  thread_exit ();
   }
