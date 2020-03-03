@@ -26,6 +26,15 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+typedef struct child_status {
+    tid_t pid;  // child pid
+    bool isLoaded;  // true if executable loaded successfully, false otherwise
+    int exit_code;  // Child exit code, if dead.
+    bool isWaiting;  // whether parent is waiting for this child or not
+    struct semaphore sem;  // semaphore used for waiting and waking up
+    struct list_elem elem;
+} child;
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The

@@ -51,18 +51,17 @@ void parser(char *file_name) {
 
 child *find_child(struct thread *t, tid_t child_pid) {
   lock_acquire(&child_lock);
-  struct list children = t->children;
-  struct list_elem *e;
-  e = list_begin(&children);
-  for (e = list_begin(&children); e != list_end(&children); e = list_next(e)) {
+  child *result = NULL;
+  struct list *children = &t->children;
+  for (struct list_elem *e = list_begin(children); e != list_end(children); e = list_next(e)) {
     child *current_child = list_entry(e, child, elem);
     if (current_child->pid == child_pid) {
-      lock_release(&child_lock);
-      return current_child;
+      result = current_child;
+      break;
     }
   }
   lock_release(&child_lock);
-  return NULL;
+  return result;
 }
 
 
@@ -149,10 +148,10 @@ start_process (void *args)
   child *new_child = arguments->child_struct;
   if (success) {
     new_child->isLoaded = true;
-    sema_up(&new_child->sem);
   } else {
     new_child->isLoaded = false;
   }
+  sema_up(&new_child->sem);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -189,7 +188,9 @@ process_wait (tid_t child_tid)
   exit_status = wait_child->exit_code;
   wait_child->isWaiting = true;
 
-
+  
+  list_remove(&wait_child->elem);
+  free(wait_child);
   return exit_status;
 }
 
@@ -216,7 +217,8 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-
+  
+  lock_acquire(&flock);
   struct list *current_files = &cur->files;
   while (!list_empty(current_files)) {
     struct list_elem *e = list_pop_back(current_files);
@@ -224,8 +226,11 @@ process_exit (void)
     file_close(current_file->file);
     free(current_file);
   }
+  lock_release(&flock);
 
-  file_close(cur->exec_file);
+  if (cur->exec_file != NULL) {
+    file_close(cur->exec_file);
+  }
 
   lock_acquire(&child_lock);
   struct list *current_children = &cur->children;
@@ -591,10 +596,7 @@ setup_stack (void **esp)
         for (int i = 0; i < pad; i++) {
            *esp -= 1;
            memcpy(*esp, &aligner, sizeof(char));
-           // **(uint32_t **)esp = (uint8_t) 0x00;
         }
-
-        // *esp -= 4 - args_length % 4;
 
         *esp -= 4;
         **(uint32_t **)esp = 0;
@@ -606,7 +608,10 @@ setup_stack (void **esp)
 
         uint32_t *old_esp = *esp;
         *esp -= 4;
+<<<<<<< HEAD
         
+=======
+>>>>>>> cf456984d98119b048682daac982dd1e7d65c3ff
         memcpy(*esp, &old_esp, sizeof(int));
 
         *esp -= 4;
