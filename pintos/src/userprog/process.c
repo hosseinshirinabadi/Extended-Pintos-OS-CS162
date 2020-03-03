@@ -51,17 +51,17 @@ void parser(char *file_name) {
 
 child *find_child(struct thread *t, tid_t child_pid) {
   lock_acquire(&child_lock);
-  struct list children = t->children;
-  struct list_elem *e;
-  for (e = list_begin(&children); e != list_end(&children); e = list_next(e)) {
+  child *result = NULL;
+  struct list *children = &t->children;
+  for (struct list_elem *e = list_begin(children); e != list_end(children); e = list_next(e)) {
     child *current_child = list_entry(e, child, elem);
     if (current_child->pid == child_pid) {
-      lock_release(&child_lock);
-      return current_child;
+      result = current_child;
+      break;
     }
   }
   lock_release(&child_lock);
-  return NULL;
+  return result;
 }
 
 
@@ -108,7 +108,6 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (command, PRI_DEFAULT, start_process, (void *)args);
-  // tid = thread_create (command, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy);
     return -1;
@@ -131,7 +130,6 @@ start_process (void *args)
 {
   struct args_struct *arguments = args;
   char *file_name = arguments->cmd_line;
-  // char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
 
@@ -189,17 +187,9 @@ process_wait (tid_t child_tid)
   sema_down(&wait_child->sem);
   exit_status = wait_child->exit_code;
   wait_child->isWaiting = true;
-
-  // if (!wait_child->isWaiting) {
-  //   exit_status = wait_child->exit_code;
-  //   wait_child->isWaiting = true;
-  // } else {
-  //   // wait has already been called
-  //   exit_status = -1;
-  // }
   
-  // list_remove(&wait_child->elem);
-  // free(wait_child);
+  list_remove(&wait_child->elem);
+  free(wait_child);
   return exit_status;
 }
 
@@ -226,7 +216,8 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-
+  
+  lock_acquire(&flock);
   struct list *current_files = &cur->files;
   while (!list_empty(current_files)) {
     struct list_elem *e = list_pop_back(current_files);
@@ -234,8 +225,11 @@ process_exit (void)
     file_close(current_file->file);
     free(current_file);
   }
+  lock_release(&flock);
 
-  file_close(cur->exec_file);
+  if (cur->exec_file != NULL) {
+    file_close(cur->exec_file);
+  }
 
   lock_acquire(&child_lock);
   struct list *current_children = &cur->children;
@@ -601,10 +595,7 @@ setup_stack (void **esp)
         for (int i = 0; i < pad; i++) {
            *esp -= 1;
            memcpy(*esp, &aligner, sizeof(char));
-           // **(uint32_t **)esp = (uint8_t) 0x00;
         }
-
-        // *esp -= 4 - args_length % 4;
 
         *esp -= 4;
         **(uint32_t **)esp = 0;
@@ -616,7 +607,6 @@ setup_stack (void **esp)
 
         uint32_t *old_esp = *esp;
         *esp -= 4;
-        // memcpy(*esp, *(uint32_t*)esp + 4, sizeof(int));
         memcpy(*esp, &old_esp, sizeof(int));
 
         *esp -= 4;
