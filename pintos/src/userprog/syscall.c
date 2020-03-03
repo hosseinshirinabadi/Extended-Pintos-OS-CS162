@@ -12,7 +12,7 @@
 #include "lib/user/syscall.h"
 #include "userprog/process.h"
 
-<
+
 static void syscall_handler (struct intr_frame *);
 static open_file *get_file_by_fd (int fd);
 static bool create_helper (const char *file, unsigned initial_size);
@@ -45,10 +45,12 @@ open_file *get_file_by_fd (int fd) {
 }
 
 
+//Helper for create syscall
 bool create_helper (const char *file, unsigned initial_size) {
 	return filesys_create (file, initial_size);
 }
 
+//Helper for open syscall
 int open_helper (const char *file) {
 	lock_acquire(&flock);
 	struct file *opened_file = filesys_open(file);
@@ -68,6 +70,7 @@ int open_helper (const char *file) {
 	}
 }
 
+//Helper for filesize syscall
 int filesize_helper (int fd) {
 	lock_acquire(&flock);
 	open_file *found_file = get_file_by_fd(fd);
@@ -81,6 +84,7 @@ int filesize_helper (int fd) {
 	}
 }
 
+//Helper for write syscall
 int write_helper (int fd, const void *buffer, unsigned size) {
 	lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
@@ -94,6 +98,7 @@ int write_helper (int fd, const void *buffer, unsigned size) {
 	}
 }
 
+//Helper for remove syscall
 bool remove_helper (const char *file_name) {
 	lock_acquire(&flock);
 	bool success = filesys_remove(file_name);
@@ -101,6 +106,7 @@ bool remove_helper (const char *file_name) {
 	return success;
 }
 
+//Helper for read syscall
 int read_helper (int fd, void *buffer, unsigned size) {
 	lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
@@ -114,6 +120,7 @@ int read_helper (int fd, void *buffer, unsigned size) {
 	}
 }
 
+//Helper for seek syscall
 void seek_helper (int fd, unsigned position) {
 	lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
@@ -125,6 +132,7 @@ void seek_helper (int fd, unsigned position) {
 	}
 }
 
+//Helper for tell syscall
 unsigned tell_helper (int fd) {
 	lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
@@ -138,6 +146,7 @@ unsigned tell_helper (int fd) {
 	}
 }
 
+//Helper for close syscall
 void close_helper (int fd) {
 	lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
@@ -150,7 +159,9 @@ void close_helper (int fd) {
 		lock_release(&flock);
 	}
 }
+  
 
+//Validate arguments for all syscalls
 bool validate_arg (void *arg) {
 	struct thread *current_thread = thread_current ();
   uint32_t *ptr = (uint32_t *) arg;

@@ -177,6 +177,8 @@ process_wait (tid_t child_tid)
 {
   int exit_status = -1;
   child *wait_child = find_child(thread_current(), child_tid);
+
+  //Checking if the child pid is valid
   if (wait_child == NULL) {
     return -1;
   }
@@ -218,6 +220,8 @@ process_exit (void)
       pagedir_destroy (pd);
     }
   
+  //Freeing the resouces
+
   lock_acquire(&flock);
   struct list *current_files = &cur->files;
   while (!list_empty(current_files)) {
@@ -442,6 +446,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
+  //Deny write for the execution file
   success = true;
   t->exec_file = file;
   file_deny_write(file);
@@ -578,11 +583,13 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success) {
+        //set esp to physical base and start setting up the stack
         *esp = PHYS_BASE;
 
         int args_addresses[argc];
         int args_length = 0;
 
+        //set the arguements of the stack first 
         for (int i = argc - 1; i >= 0; i--) {
           args_length += (strlen(argv[i]) + 1);
           *esp -= strlen(argv[i]) + 1;
@@ -592,6 +599,7 @@ setup_stack (void **esp)
 
         uint32_t pad = (*(uint32_t*)esp - ((argc + 1) * 4 + 8)) % 16;
 
+        //set a 16 byte aligner
         uint8_t aligner = 0;
         for (int i = 0; i < pad; i++) {
            *esp -= 1;
@@ -601,17 +609,16 @@ setup_stack (void **esp)
         *esp -= 4;
         **(uint32_t **)esp = 0;
 
+        //set the addresses of the arguments 
         for (int i = argc - 1; i >= 0; i--) {
           *esp -= 4;
           memcpy(*esp, &args_addresses[i], sizeof(int));
         }
 
+        //then the arguments address & return address 
         uint32_t *old_esp = *esp;
         *esp -= 4;
-<<<<<<< HEAD
-        
-=======
->>>>>>> cf456984d98119b048682daac982dd1e7d65c3ff
+
         memcpy(*esp, &old_esp, sizeof(int));
 
         *esp -= 4;
