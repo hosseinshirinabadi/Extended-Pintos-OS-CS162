@@ -190,15 +190,7 @@ thread_create (const char *name, int priority,
 
   t->parent_thread = thread_current();
 
-  // struct thread *current_thread = thread_current();
-  // child *new_child = malloc(sizeof(child));
-  // if (!new_child) {
-  //   return -1;
-  // }
-  // new_child->pid = tid;
-  // new_child->parent_pid = current_thread->tid;
-  // new_child->isLoaded = false;
-  // sema_init (&new_child->sem, 0);
+ 
 
 
   /* Stack frame for kernel_thread(). */

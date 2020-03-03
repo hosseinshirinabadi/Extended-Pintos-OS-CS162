@@ -53,6 +53,7 @@ child *find_child(struct thread *t, tid_t child_pid) {
   lock_acquire(&child_lock);
   struct list children = t->children;
   struct list_elem *e;
+  e = list_begin(&children);
   for (e = list_begin(&children); e != list_end(&children); e = list_next(e)) {
     child *current_child = list_entry(e, child, elem);
     if (current_child->pid == child_pid) {
@@ -108,7 +109,6 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (command, PRI_DEFAULT, start_process, (void *)args);
-  // tid = thread_create (command, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy);
     return -1;
@@ -131,7 +131,6 @@ start_process (void *args)
 {
   struct args_struct *arguments = args;
   char *file_name = arguments->cmd_line;
-  // char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
 
@@ -190,16 +189,7 @@ process_wait (tid_t child_tid)
   exit_status = wait_child->exit_code;
   wait_child->isWaiting = true;
 
-  // if (!wait_child->isWaiting) {
-  //   exit_status = wait_child->exit_code;
-  //   wait_child->isWaiting = true;
-  // } else {
-  //   // wait has already been called
-  //   exit_status = -1;
-  // }
-  
-  // list_remove(&wait_child->elem);
-  // free(wait_child);
+
   return exit_status;
 }
 
@@ -616,7 +606,7 @@ setup_stack (void **esp)
 
         uint32_t *old_esp = *esp;
         *esp -= 4;
-        // memcpy(*esp, *(uint32_t*)esp + 4, sizeof(int));
+        
         memcpy(*esp, &old_esp, sizeof(int));
 
         *esp -= 4;

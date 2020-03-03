@@ -12,12 +12,6 @@
 #include "lib/user/syscall.h"
 #include "userprog/process.h"
 
-// typedef struct file_status {
-//     int fd;
-//     char *file_name;
-//     struct file *file;
-//     struct list_elem elem;
-// } open_file;
 
 static void syscall_handler (struct intr_frame *);
 static open_file *get_file_by_fd (int fd);
@@ -30,7 +24,6 @@ static bool remove_helper(const char *file_name);
 static int write_helper (int fd, const void *buffer, unsigned size);
 static int filesize_helper (int fd);
 static int open_helper (const char *file);
-// static bool validate_arg (void *arg);
 
 
 // global lock for file system level
@@ -216,17 +209,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   } else if (args[0] == SYS_EXEC) {
   	  const char *cmd_line = args[1];
-      // char *buffer = malloc(strlen(cmd_line) + 1);
-      // strlcpy(buffer, cmd_line, sizeof(buffer));
-      // while (*buffer != '\0') {
-      //   if (!validate_arg(buffer)) {
-      //     f->eax = -1;
-      //     printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-      //     thread_exit ();
-      //   }
-      //   buffer = buffer + 1;
-      // }
-      // f->eax = process_execute(cmd_line);
+      
 
   	  if (!validate_arg(cmd_line) || !validate_arg(cmd_line + 1)) {
         f->eax = -1;
@@ -308,7 +291,6 @@ syscall_handler (struct intr_frame *f UNUSED)
   } else if (args[0] == SYS_READ) {
   	  int fd = args[1];
   	  unsigned size = args[3];
-  	  // if (!validate_arg((void *) args[2])) {
   	  if (!validate_arg((char *) args[2])) {
 		    f->eax = -1;
 	      printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
