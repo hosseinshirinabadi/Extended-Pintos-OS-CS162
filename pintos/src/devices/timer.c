@@ -29,6 +29,11 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
+static bool less_list(const struct list_elem *ethread1, const struct list_elem *ethread2, void *aux UNUSED);
+
+
+/* Global variable that holds the threads that are sleeping */
+static struct list sleeping_threads;
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -37,6 +42,7 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  list_init (&sleeping_threads);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -84,16 +90,23 @@ timer_elapsed (int64_t then)
   return timer_ticks () - then;
 }
 
+static bool less_list(const struct list_elem *ethread1, const struct list_elem *ethread2, void *aux UNUSED) {
+  struct thread *thread1 = list_entry(ethread1, struct thread, sleepelem);
+  struct thread *thread2 = list_entry(ethread2, struct thread, sleepelem);
+  return thread1->sleep_time < thread2->sleep_time;
+}
+
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
 void
 timer_sleep (int64_t ticks)
 {
-  int64_t start = timer_ticks ();
-
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks)
-    thread_yield ();
+  struct thread *current_thread = thread_current();
+  current_thread->sleep_time = timer_ticks() + ticks;
+  enum intr_level old_level = intr_disable();
+  list_insert_ordered(&sleeping_threads, &current_thread->sleepelem, less_list, NULL);
+  thread_block();
+  intr_set_level(old_level);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -172,6 +185,26 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+
+  if (list_empty(&sleeping_threads)) {
+    return;
+  }
+
+  struct list_elem *e = list_begin(&sleeping_threads);
+  while (e != list_end(&sleeping_threads)) {
+    struct thread *cur = list_entry(e, struct thread, sleepelem);
+    if (cur->sleep_time <= ticks) {
+      struct list_elem *next_elem = list_next(e);
+      enum intr_level old_level = intr_disable();
+      list_remove(e);
+      intr_set_level(old_level);
+      thread_unblock(cur);
+      e = next_elem;
+    } else {
+      // no need to check further since future threads will even have a longer sleep time 
+      break;
+    }
+  }
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
