@@ -35,6 +35,7 @@ typedef struct child_status {
     struct list_elem elem;
 } child;
 
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -103,6 +104,9 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+
+    int64_t sleep_time;                 /* Amount of time in ticks to wake up from sleep */
+    struct list_elem sleepelem;         /* List element for sleeping threads list. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
