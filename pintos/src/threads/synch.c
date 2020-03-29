@@ -202,7 +202,7 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
 
   struct thread *current_thread = thread_current();
-  // enum intr_level old_level = intr_disable();
+  enum intr_level old_level = intr_disable();
 
   // lock is not held by any thread
   if (lock->holder == NULL) {
@@ -214,9 +214,11 @@ lock_acquire (struct lock *lock)
 
     if (lock->holder->priority < current_thread->priority) {
       // perform recursive priority donation
-      
+
     }
   }
+
+  intr_set_level(old_level);
 
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
