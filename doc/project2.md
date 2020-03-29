@@ -1,11 +1,20 @@
-Design Document for Project 2: Threads
-======================================
+Design Document for Project 1: Scheduling 
+============================================
+
 
 ## Group Members
 
-* FirstName LastName <email@domain.example>
-* FirstName LastName <email@domain.example>
-* FirstName LastName <email@domain.example>
-* FirstName LastName <email@domain.example>
+* Sina Dalir <sdalir@berkeley.edu>
+* Pedram Pourdavood <pedrampd@berkeley.edu>
+* Sahba Bostanbakhsh <sahba@berkeley.edu>
+* Hossein Shirinabadi <hossein_shirinabadi@berkeley.edu>
 
-Replace this text with your design document.
+
+### Task 1 : Efficient Alarm Clock
+
+#### DataStructures & Functions :
+
+```C
+
+```
+
