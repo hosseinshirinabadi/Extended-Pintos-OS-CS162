@@ -510,9 +510,14 @@ next_thread_to_run (void)
 {
   if (list_empty (&ready_list))
     return idle_thread;
-  else
-    return find_highest_priority(&ready_list);  // haven't done round-robin yet
+  else {
+    // return find_highest_priority(&ready_list);  // haven't done round-robin yet
+    struct list_elem *max_elem = list_max(&ready_list, priority_comparator, NULL);
+    struct thread *max_thread = list_entry(max_elem, struct thread, elem);
+    list_remove(max_elem);
+    return max_thread;
     // return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  }
 }
 
 /* Completes a thread switch by activating the new thread's page
