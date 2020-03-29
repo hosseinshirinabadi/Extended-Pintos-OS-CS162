@@ -101,6 +101,9 @@ static bool less_list(const struct list_elem *ethread1, const struct list_elem *
 void
 timer_sleep (int64_t ticks)
 {
+  if (ticks <= 0) {
+    return;
+  }
   struct thread *current_thread = thread_current();
   current_thread->sleep_time = timer_ticks() + ticks;
   enum intr_level old_level = intr_disable();

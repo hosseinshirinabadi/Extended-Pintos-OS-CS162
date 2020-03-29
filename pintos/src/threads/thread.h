@@ -108,6 +108,12 @@ struct thread
     int64_t sleep_time;                 /* Amount of time in ticks to wake up from sleep */
     struct list_elem sleepelem;         /* List element for sleeping threads list. */
 
+    struct list current_locks;          /* Locks held by this thread */  
+    struct lock *waiting_lock;          /* Lock this thread is waiting for */ 
+    struct list_elem lock_elem;
+    int nice;                           /* Threa's niceness, between [-20,20] */  
+    int base_priority;                  /* priority before receiving donation */ 
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -165,4 +171,19 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-#endif /* threads/thread.h */
+static bool priority_comparator(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
+  struct thread *thread1 = list_entry(a, struct thread, elem);
+  struct thread *thread2 = list_entry(b, struct thread, elem);
+  return thread1->priority < thread2->priority;
+}
+
+static struct thread *find_highest_priority(struct list *list) {
+  if (list_empty(list)) {
+    return NULL;
+  }
+  struct list_elem *max_elem = list_max(list, priority_comparator, NULL);
+  struct thread *max_thread = list_entry(max_elem, struct thread, elem);
+  return max_thread;
+}
+
+#endif /* threadsm/thread.h */
