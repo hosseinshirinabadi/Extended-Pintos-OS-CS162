@@ -109,9 +109,7 @@ struct thread
     struct list_elem sleepelem;         /* List element for sleeping threads list. */
 
     struct list current_locks;          /* Locks held by this thread */  
-    struct lock *waiting_lock;          /* Lock this thread is waiting for */ 
-    struct list_elem lock_elem;
-    int nice;                           /* Threa's niceness, between [-20,20] */  
+    struct lock *waiting_lock;          /* Lock this thread is waiting for */  
     int base_priority;                  /* priority before receiving donation */ 
 
 #ifdef USERPROG
