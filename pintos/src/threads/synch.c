@@ -160,6 +160,16 @@ sema_test_helper (void *sema_)
       sema_up (&sema[1]);
     }
 }
+
+void recursive_donation(struct thread* T) {
+  if (T->waiting_lock == NULL) {
+    if (T->waiting_lock->holder->priority < T->priority) {
+     T->waiting_lock->holder->priority = T->priority;
+     recursive_donation(T->waiting_lock->holder);
+
+    } 
+  }
+}
 
 /* Initializes LOCK.  A lock can be held by at most a single
    thread at any given time.  Our locks are not "recursive", that
@@ -214,6 +224,7 @@ lock_acquire (struct lock *lock)
 
     if (lock->holder->priority < current_thread->priority) {
       // perform recursive priority donation
+      recursive_donation(current_thread);
 
     }
   }
