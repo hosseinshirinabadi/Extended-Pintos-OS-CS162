@@ -167,6 +167,9 @@ void recursive_donation(struct thread* T) {
     if (T->waiting_lock->holder->priority < T->priority) {
      T->waiting_lock->holder->priority = T->priority;
      recursive_donation(T->waiting_lock->holder);
+   }
+ }
+}
 
 
 /* Initializes LOCK.  A lock can be held by at most a single
@@ -209,39 +212,39 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  // struct thread *current_thread = thread_current();
-  // enum intr_level old_level = intr_disable();
+  struct thread *current_thread = thread_current();
+  enum intr_level old_level = intr_disable();
 
-  // // lock is held by another thread
-  // if (lock->holder != NULL) {
-  //   current_thread->waiting_lock = lock;
-  //   list_push_back(&lock->waiting_threads, &current_thread->elem);
+  // lock is held by another thread
+  if (lock->holder != NULL) {
+    current_thread->waiting_lock = lock;
+    list_push_back(&lock->waiting_threads, &current_thread->elem);
 
-  //   if (lock->holder->priority < current_thread->priority) {
-  //     // perform recursive priority donation
-  //     recursive_donation(current_thread);
-  //   }
-  // }
+    if (lock->holder->priority < current_thread->priority) {
+      // perform recursive priority donation
+      recursive_donation(current_thread);
+    }
+  }
 
-  // // either wait or acquire the lock
-  // sema_down (&lock->semaphore);
+  // either wait or acquire the lock
+  sema_down (&lock->semaphore);
 
-  // // we have acquired the lock by now
-  // lock->holder = thread_current ();
-  // list_push_back(&current_thread->current_locks, &lock->elem);
-  // list_remove(&current_thread->elem); // remove the current thread from the lock's waiting_threads
-  // current_thread->waiting_lock = NULL;
+  // we have acquired the lock by now
+  lock->holder = thread_current ();
+  list_push_back(&current_thread->current_locks, &lock->elem);
+  list_remove(&current_thread->elem); // remove the current thread from the lock's waiting_threads
+  current_thread->waiting_lock = NULL;
 
-  // // update the current thread's priority to be max priority of the threads waiting for this lock
+  // update the current thread's priority to be max priority of the threads waiting for this lock
   // struct thread *max_waiting_thread = find_highest_priority(&lock->waiting_threads);
   // if (max_waiting_thread != NULL && max_waiting_thread->priority > current_thread->priority) {
   //   current_thread->priority = max_waiting_thread->priority;
   // }
 
-  // intr_set_level(old_level);
+  intr_set_level(old_level);
 
-  sema_down (&lock->semaphore);
-  lock->holder = thread_current ();
+  //sema_down (&lock->semaphore);
+  //lock->holder = thread_current ();
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -276,6 +279,24 @@ lock_try_acquire (struct lock *lock)
   return success;
 }
 
+int maxPriorityPostDonation(struct thread* t) {
+  int max = t->base_priority;
+   for (struct list_elem *e = list_begin(&t->current_locks); e != list_end(&t->current_locks); e = list_next(e)) {
+    struct lock* current_lock = list_entry(e, struct lock, elem);
+    if (!list_empty(&(current_lock->semaphore.waiters))) {
+      struct list_elem *max_thread_elem = list_max(&(&current_lock->semaphore)->waiters, priority_comparator, NULL);
+      struct thread *max_priority_thread = list_entry(max_thread_elem, struct thread, elem);
+      if (max < max_priority_thread->priority)
+      {
+        max = max_priority_thread->priority;
+      }
+      
+    }
+  }
+  return max;
+
+}
+
 /* Releases LOCK, which must be owned by the current thread.
 
    An interrupt handler cannot acquire a lock, so it does not
@@ -287,36 +308,36 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  // struct thread *current_thread = thread_current();
-  // enum intr_level old_level = intr_disable();
+  struct thread *current_thread = thread_current();
+  enum intr_level old_level = intr_disable();
 
-  // list_remove(&lock->elem);  // remove the lock from the current_locks list of the thread
-  // lock->holder = NULL;
-  // sema_up (&lock->semaphore);
-
-  // if (current_thread->base_priority != current_thread->priority) {
-  //   // priority was donated to this thread, set it back to its original priority
-  //   if (list_empty(&current_thread->current_locks)) {
-  //     current_thread->priority = current_thread->base_priority;
-  //   } else {
-  //     struct list_elem list_max(&current_thread->current_locks, priority_comparator, NULL);
-  //   }
-    
-  // }
-
-  // // if (!list_empty(&lock->waiting_threads)) {
-  // //   struct list_elem *max_waiting_thread_elem = list_max(&lock->waiting_threads, priority_comparator, NULL);
-  // //   struct thread *max_waiting_thread = list_entry(max_waiting_thread_elem, struct thread, elem);
-  // //   lock->holder = max_waiting_thread;
-  // //   max_waiting_thread->waiting_lock = NULL;
-  // // }
-  // intr_set_level(old_level);
-
-  // // yield to other threads in case priority has been changed
-  // thread_yield();
-
+  list_remove(&lock->elem);  // remove the lock from the current_locks list of the thread
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+
+  if (current_thread->base_priority != current_thread->priority) {
+    // priority was donated to this thread, set it back to its original priority
+    if (list_empty(&current_thread->current_locks)) {
+      current_thread->priority = current_thread->base_priority;
+    } else {
+      current_thread->priority = maxPriorityPostDonation(current_thread);
+    }
+    
+  }
+
+  // if (!list_empty(&lock->waiting_threads)) {
+  //   struct list_elem *max_waiting_thread_elem = list_max(&lock->waiting_threads, priority_comparator, NULL);
+  //   struct thread *max_waiting_thread = list_entry(max_waiting_thread_elem, struct thread, elem);
+  //   lock->holder = max_waiting_thread;
+  //   max_waiting_thread->waiting_lock = NULL;
+  // }
+  intr_set_level(old_level);
+
+  // yield to other threads in case priority has been changed
+  thread_yield();
+
+  //lock->holder = NULL;
+  //sema_up (&lock->semaphore);
 }
 
 /* Returns true if the current thread holds LOCK, false
