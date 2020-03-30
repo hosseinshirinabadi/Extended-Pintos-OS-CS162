@@ -161,14 +161,12 @@ sema_test_helper (void *sema_)
     }
 }
 
-void recursive_donation(struct thread* T) {
-  if (T->waiting_lock == NULL) {
-    if (T->waiting_lock->holder->priority < T->priority) {
-     T->waiting_lock->holder->priority = T->priority;
-     recursive_donation(T->waiting_lock->holder);
 
-    } 
-  }
+void recursive_donation(struct thread* T) {
+  if (T->waiting_lock && T->waiting_lock->holder && T->waiting_lock->holder->priority < T->priority) {
+   T->waiting_lock->holder->priority = T->priority;
+   recursive_donation(T->waiting_lock->holder);
+  } 
 }
 
 /* Initializes LOCK.  A lock can be held by at most a single
