@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 Design Document for Project 1: Scheduling 
 
 
@@ -13,13 +13,7 @@ Design Document for Project 1: Scheduling
 
 ### Task 1 : Efficient Alarm Clock
 
-<<<<<<< HEAD
-#### DataStructures & Functions :
 
-```C
-
-```
-=======
 #### DataStructures & Functions:
 
 In thread.h:
@@ -177,5 +171,4 @@ The Output of the incorrect scheduler will be :
 3. THREAD L FINISHED
 4. MAIN still running
 
->>>>>>> d313cee15f7a385536860fb8e746cf96d21668a2
 
