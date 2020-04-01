@@ -1,5 +1,5 @@
 
-Design Document for Project 1: Scheduling 
+Design Document for Project 2: Scheduling 
 
 
 
