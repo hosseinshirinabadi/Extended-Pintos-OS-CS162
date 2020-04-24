@@ -10,15 +10,14 @@ struct cache_entry {
   bool dirty;  // block was written or not
   bool valid;
   struct lock cache_lock;  // lock for this cache
-  int num_readers;
-  int num_writers;
   struct list_elem elem;  // list_elem used for the LRU list
 };
 
 struct cache_entry cache[64];
 struct list LRU;
 struct lock LRU_lock;
-int count = 0;
+struct lock global_cache_lock;
+int counter = 0;
 
 
 void initialize_cache() {
@@ -28,31 +27,33 @@ void initialize_cache() {
   }
 
   // initialize LRU list and lock
-  list_init(LRU);
-  lock_init(LRU_lock);
+  list_init(&LRU);
+  lock_init(&LRU_lock);
+
+  list_init(&global_cache_lock);
 }
 
 
 void read_from_cache(block_sector_t target_sector, void *buff) {
   assert(sizeof(buff) == BLOCK_SECTOR_SIZE);
-  lock_acquire(&LRU_lock);
+  lock_acquire(&global_cache_lock);
 
   struct cache_entry *block;
-  for (int i = 0; i < access_count; i++) {
+  for (int i = 0; i < counter; i++) {
     block = &cache[i];
     if (block->sector == target_sector) {
       memcpy(buff, block->data, BLOCK_SECTOR_SIZE);
-      lock_release(&lock_release);
+      lock_release(&global_cache_lock);
 
-      update_LRU(block);
+      update_LRU2(block);
       return;
     }
   }
 
-  if (access_count < 64) {
+  if (counter < 64) {
     // find an empty block
-    block = &cache[access_count];
-    access_count++;
+    block = &cache[counter];
+    counter++;
 
     lock_acquire(&block->cache_lock);
     block->sector = target_sector;
@@ -62,13 +63,30 @@ void read_from_cache(block_sector_t target_sector, void *buff) {
 
     block->dirty = false;
     block->valid = true;
-    block->num_readers++;
     lock_release(&block->cache_lock);
 
-    update_LRU(block);
+    update_LRU1(block);
   } else {
-    // replace
+    // evict and replace
+    lock_acquire(&LRU_lock);
+    block = list_front(&LRU);
+    lock_release(&LRU_lock);
 
+    if (block->dirty) {
+      // write back to disk
+      block_write(fs_device, block->sector, block->data);
+    }
+
+    block->sector = target_sector;
+
+    block_read(fs_device, target_sector, buff);
+    memcpy(block->data, buff, BLOCK_SECTOR_SIZE);
+
+    block->dirty = false;
+    block->valid = true;
+    lock_release(&block->cache_lock);
+
+    update_LRU2(block);
   }
 
 
