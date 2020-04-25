@@ -3,6 +3,8 @@
 #include "threads/malloc.h"
 #include <stdbool.h>
 #include <list.h>
+#include "threads/synch.h"
+#include "filesys/filesys.h"
 
 struct cache_entry {
   block_sector_t sector;  // sector number on disk
@@ -30,14 +32,11 @@ void initialize_cache() {
   list_init(&LRU);
   lock_init(&LRU_lock);
 
-  list_init(&global_cache_lock);
+  lock_init(&global_cache_lock);
 }
 
-
 void read_from_cache(block_sector_t target_sector, void *buff) {
-  assert(sizeof(buff) == BLOCK_SECTOR_SIZE);
   lock_acquire(&global_cache_lock);
-
   struct cache_entry *block;
   for (int i = 0; i < counter; i++) {
     block = &cache[i];
@@ -65,13 +64,16 @@ void read_from_cache(block_sector_t target_sector, void *buff) {
     block->valid = true;
     lock_release(&block->cache_lock);
 
+    lock_release(&global_cache_lock);
     update_LRU1(block);
   } else {
     // evict and replace
     lock_acquire(&LRU_lock);
-    block = list_front(&LRU);
+    struct list_elem *block_elem = list_front(&LRU);
+    block = list_entry(block_elem, struct cache_entry, elem);
     lock_release(&LRU_lock);
 
+    lock_acquire(&block->cache_lock);
     if (block->dirty) {
       // write back to disk
       block_write(fs_device, block->sector, block->data);
@@ -86,38 +88,66 @@ void read_from_cache(block_sector_t target_sector, void *buff) {
     block->valid = true;
     lock_release(&block->cache_lock);
 
+    lock_release(&global_cache_lock);
     update_LRU2(block);
-  }
-
-
-
-
-
-  // struct cache_entry *block = &cache[target_sector % 64];
-  // if (block->sector == target_sector) {
-  //     lock_acquire(&block->cache_lock);
-  //     memcpy(buff, block->data, BLOCK_SECTOR_SIZE);
-  //     lock_release (&block->cache_lock);
-
-  //     update_LRU(block);
-  //     return;
-  // } else {
-  //   lock_acquire(&block->cache_lock);
-  //   block->sector = target_sector;
-  //   block_read(fs_device, target_sector, buff);
-  //   memcpy(block->data, buff, BLOCK_SECTOR_SIZE);
-  //   block->dirty = false;
-  //   lock_release(&block->cache_lock);
-
-  //   update_LRU(block);
-  // }
-
-    
+  } 
 }
 
-
 void write_to_cache(block_sector_t target_sector, void *buff) {
+  lock_acquire(&global_cache_lock);
 
+  struct cache_entry *block;
+  for (int i = 0; i < counter; i++) {
+    block = &cache[i];
+    if (block->sector == target_sector) {
+      memcpy(block->data, buff, BLOCK_SECTOR_SIZE);
+      lock_release(&global_cache_lock);
+
+      update_LRU2(block);
+      return;
+    }
+  }
+
+  if (counter < 64) {
+    // find an empty block
+    block = &cache[counter];
+    counter++;
+
+    lock_acquire(&block->cache_lock);
+    block->sector = target_sector;
+
+    memcpy(block->data, buff, BLOCK_SECTOR_SIZE);
+
+    block->dirty = true;
+    block->valid = true;
+    lock_release(&block->cache_lock);
+
+    lock_release(&global_cache_lock);
+    update_LRU1(block);
+  } else {
+    // evict and replace
+    lock_acquire(&LRU_lock);
+    struct list_elem *block_elem = list_front(&LRU);
+    block = list_entry(block_elem, struct cache_entry, elem);
+    lock_release(&LRU_lock);
+
+    lock_acquire(&block->cache_lock);
+    if (block->dirty) {
+      // write back to disk
+      block_write(fs_device, block->sector, block->data);
+    }
+
+    block->sector = target_sector;
+
+    memcpy(block->data, buff, BLOCK_SECTOR_SIZE);
+
+    block->dirty = true;
+    block->valid = true;
+    lock_release(&block->cache_lock);
+
+    lock_release(&global_cache_lock);
+    update_LRU2(block);
+  }
 }
 
 void update_LRU1(struct cache_entry *block) {
@@ -132,6 +162,3 @@ void update_LRU2(struct cache_entry *block) {
   list_push_back(&LRU, &block->elem);
   lock_release(&LRU_lock);
 }
-
-
-
