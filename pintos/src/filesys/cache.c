@@ -140,7 +140,7 @@ void write_to_cache(block_sector_t target_sector, void *buff) {
       // write back to disk
       block_write(fs_device, block->sector, block->data);
     }
-    block->sector = target_sector;g
+    block->sector = target_sector;
     memcpy(block->data, buff, BLOCK_SECTOR_SIZE);
     block->dirty = true;
     block->valid = true;
@@ -148,6 +148,21 @@ void write_to_cache(block_sector_t target_sector, void *buff) {
 
     // lock_release(&global_cache_lock);
   }
+}
+
+void flush_cache() {
+  lock_acquire(&global_cache_lock);
+  struct cache_entry *block;
+  for (int i = 0; i < counter; i++) {
+    block = &cache[i];
+    if (block->dirty == true) {
+      lock_acquire(&block->cache_lock);
+      block->dirty = false;
+      block_write(fs_device, block->sector, block->data);
+      lock_release(&block->cache_lock);
+    }
+  }
+  lock_release(&global_cache_lock);
 }
 
 void update_LRU1(struct cache_entry *block) {
