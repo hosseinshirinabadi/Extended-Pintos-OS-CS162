@@ -29,7 +29,7 @@ static bool validate_arg (void *arg);
 
 
 // global lock for file system level
-struct lock flock;
+// struct lock flock;
 
 // finds the open file of the current thread that matches fd
 open_file *get_file_by_fd (int fd) {
@@ -52,7 +52,7 @@ bool create_helper (const char *file, unsigned initial_size) {
 
 //Helper for open syscall
 int open_helper (const char *file) {
-	lock_acquire(&flock);
+	// lock_acquire(&flock);
 	struct file *opened_file = filesys_open(file);
 	if (opened_file) {
 		struct thread *current_thread = thread_current();
@@ -62,101 +62,101 @@ int open_helper (const char *file) {
 		file_element->file_name = file;
 		file_element->file = opened_file;
 		list_push_back(&current_thread->files, &file_element->elem);
-		lock_release(&flock);
+		// lock_release(&flock);
 		return fd;
 	} else {
-		lock_release(&flock);
+		// lock_release(&flock);
 		return -1;
 	}
 }
 
 //Helper for filesize syscall
 int filesize_helper (int fd) {
-	lock_acquire(&flock);
+	// lock_acquire(&flock);
 	open_file *found_file = get_file_by_fd(fd);
 	if (found_file) {
 		int length = file_length (found_file->file);
-		lock_release(&flock);
+		// lock_release(&flock);
 		return length;
 	} else {
-		lock_release(&flock);
+		// lock_release(&flock);
 		return -1;
 	}
 }
 
 //Helper for write syscall
 int write_helper (int fd, const void *buffer, unsigned size) {
-	lock_acquire(&flock);
+	// lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
 	if (file) {
 		int bytes_written = file_write(file->file, (const void * ) buffer, size);
-		lock_release(&flock);
+		// lock_release(&flock);
 		return bytes_written;
 	} else {
-		lock_release(&flock);
+		// lock_release(&flock);
 		return 0;
 	}
 }
 
 //Helper for remove syscall
 bool remove_helper (const char *file_name) {
-	lock_acquire(&flock);
+	// lock_acquire(&flock);
 	bool success = filesys_remove(file_name);
-	lock_release(&flock);
+	// lock_release(&flock);
 	return success;
 }
 
 //Helper for read syscall
 int read_helper (int fd, void *buffer, unsigned size) {
-	lock_acquire(&flock);
+	// lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
 	if (file) {
 		int bytes_read = file_read(file->file, buffer, size);
-		lock_release(&flock);
+		// lock_release(&flock);
 		return bytes_read;
 	} else {
-		lock_release(&flock);
+		// lock_release(&flock);
 		return -1;
 	}
 }
 
 //Helper for seek syscall
 void seek_helper (int fd, unsigned position) {
-	lock_acquire(&flock);
+	// lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
 	if (file) {
 		file_seek (file->file, position);
-		lock_release(&flock);
+		// lock_release(&flock);
 	} else {
-		lock_release(&flock);
+		// lock_release(&flock);
 	}
 }
 
 //Helper for tell syscall
 unsigned tell_helper (int fd) {
-	lock_acquire(&flock);
+	// lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
 	if (file) {
 		unsigned position = file_tell(file->file);
-		lock_release(&flock);
+		// lock_release(&flock);
 		return position;
 	} else {
-		lock_release(&flock);
+		// lock_release(&flock);
 		return -1;
 	}
 }
 
 //Helper for close syscall
 void close_helper (int fd) {
-	lock_acquire(&flock);
+	// lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
 	if (file) {
 		list_remove(&file->elem);
 		file_close(file->file);
 		free(file);
-		lock_release(&flock);
+		// lock_release(&flock);
 	} else {
-		lock_release(&flock);
+		// lock_release(&flock);
 	}
 }
   
@@ -172,7 +172,7 @@ bool validate_arg (void *arg) {
 void
 syscall_init (void)
 {
-  lock_init(&flock);
+  // lock_init(&flock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -250,9 +250,9 @@ syscall_handler (struct intr_frame *f UNUSED)
 	      thread_exit ();
       } else {
       	if (fd == 1) {
-	      	lock_acquire(&flock);
+	      	// lock_acquire(&flock);
 	      	putbuf ((const char *) args[2], size);
-	      	lock_release(&flock);
+	      	// lock_release(&flock);
 	      	f->eax = size;
 	      } else {
 	      	f->eax = write_helper(fd, buffer, size);
@@ -298,12 +298,12 @@ syscall_handler (struct intr_frame *f UNUSED)
 	      thread_exit ();
   	  } else {
   	  	if (fd == 0) {
-  	      lock_acquire(&flock);
+  	      // lock_acquire(&flock);
   	  	  uint8_t *buffer = (uint8_t * ) args[2];
   	  	  for (unsigned i = 0; i < size; i++) {
   	  		  buffer[i] = input_getc();
   	  	  }
-  	  	  lock_release(&flock);
+  	  	  // lock_release(&flock);
   	  	  f->eax = size;
   	    } else if (fd > 0) {
   	  	  void *buffer = (void *) args[2];
