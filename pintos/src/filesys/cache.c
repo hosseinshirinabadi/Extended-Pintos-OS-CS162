@@ -10,7 +10,6 @@ struct cache_entry {
   block_sector_t sector;  // sector number on disk
   char data[BLOCK_SECTOR_SIZE];  // cached data
   bool dirty;  // block was written or not
-  bool valid;  // valid bit
   struct lock cache_lock;  // lock for this cache
   struct list_elem elem;  // list_elem used for the LRU list
 };
@@ -46,6 +45,7 @@ void read_from_cache(block_sector_t target_sector, void *buff) {
       memcpy(buff, block->data, BLOCK_SECTOR_SIZE);
       lock_release(&block->cache_lock);
 
+      // lock_release(&global_cache_lock);
       return;
     }
     lock_release(&block->cache_lock);
@@ -64,7 +64,6 @@ void read_from_cache(block_sector_t target_sector, void *buff) {
     block_read(fs_device, target_sector, buff);
     memcpy(block->data, buff, BLOCK_SECTOR_SIZE);
     block->dirty = false;
-    block->valid = true;
     lock_release(&block->cache_lock);
 
     // lock_release(&global_cache_lock);
@@ -85,7 +84,6 @@ void read_from_cache(block_sector_t target_sector, void *buff) {
     block_read(fs_device, target_sector, buff);
     memcpy(block->data, buff, BLOCK_SECTOR_SIZE);
     block->dirty = false;
-    block->valid = true;
     lock_release(&block->cache_lock);
 
     // lock_release(&global_cache_lock);
@@ -104,8 +102,10 @@ void write_to_cache(block_sector_t target_sector, void *buff) {
       lock_release(&global_cache_lock);
 
       memcpy(block->data, buff, BLOCK_SECTOR_SIZE);
+      block->dirty = true;
       lock_release(&block->cache_lock);
 
+      // lock_release(&global_cache_lock);
       return;
     }
     lock_release(&block->cache_lock);
@@ -123,7 +123,6 @@ void write_to_cache(block_sector_t target_sector, void *buff) {
     block->sector = target_sector;
     memcpy(block->data, buff, BLOCK_SECTOR_SIZE);
     block->dirty = true;
-    block->valid = true;
     lock_release(&block->cache_lock);
 
     // lock_release(&global_cache_lock);
@@ -143,7 +142,6 @@ void write_to_cache(block_sector_t target_sector, void *buff) {
     block->sector = target_sector;
     memcpy(block->data, buff, BLOCK_SECTOR_SIZE);
     block->dirty = true;
-    block->valid = true;
     lock_release(&block->cache_lock);
 
     // lock_release(&global_cache_lock);

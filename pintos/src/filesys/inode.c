@@ -11,18 +11,26 @@
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
+#define NUM_DIRECT_POINTERS 12
+#define NUM_POINTERS_PER_INDIRECT BLOCK_SECTOR_SIZE / sizeof(block_sector_t)
+
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk
   {
-    // block_sector_t start;               /* First data sector. */
-    block_sector_t direct_pointers[12];
-    block_sector_t indirect_pointer;
-    block_sector_t doubly_indirect_pointer;
+    block_sector_t start;               /* First data sector. */
+    // block_sector_t direct_pointers[NUM_DIRECT_POINTERS];
+    // block_sector_t indirect_pointer;
+    // block_sector_t doubly_indirect_pointer;
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
-    uint32_t unused[112];               /* Not used. */
+    uint32_t unused[125];               /* Not used. */ // 125 old, 112 new
   };
+
+
+struct indirect_disk {
+  block_sector_t pointers[NUM_POINTERS_PER_INDIRECT];
+};
 
 /* Returns the number of sectors to allocate for an inode SIZE
    bytes long. */
@@ -43,6 +51,21 @@ struct inode
     struct inode_disk data;             /* Inode content. */
   };
 
+
+static struct inode_disk *get_inode_disk(struct inode *inode) {
+  char buffer[BLOCK_SECTOR_SIZE];
+  read_from_cache(inode->sector, buffer);
+  struct inode_disk *result = buffer;
+  return result;
+}
+
+static struct indirect_disk *get_indirect_disk(block_sector_t sector_number) {
+  char buffer[BLOCK_SECTOR_SIZE];
+  read_from_cache(sector_number, buffer);
+  struct indirect_disk *result = buffer;
+  return result;
+}
+
 /* Returns the block device sector that contains byte offset POS
    within INODE.
    Returns -1 if INODE does not contain data for a byte at offset
@@ -51,6 +74,50 @@ static block_sector_t
 byte_to_sector (const struct inode *inode, off_t pos)
 {
   ASSERT (inode != NULL);
+
+  // struct inode_disk *disk_data = get_inode_disk(inode);
+
+  // if (pos < 0) {
+  //   return -1;
+  // }
+
+  // if (pos < disk_data->length) {
+  //   // return inode->data.start + pos / BLOCK_SECTOR_SIZE;
+
+  //   // check if position is in one of the 12 direct blocks
+  //   if (pos < NUM_DIRECT_POINTERS * BLOCK_SECTOR_SIZE) {
+  //     int direct_index = pos / BLOCK_SECTOR_SIZE;
+  //     block_sector_t result_sector = inode->direct_pointers[direct_index];
+  //     return result_sector;
+
+  //   // check if position is in one of the blocks in the indirect pointer
+  //   } else if (pos < NUM_DIRECT_POINTERS*BLOCK_SECTOR_SIZE + NUM_POINTERS_PER_INDIRECT*BLOCK_SECTOR_SIZE) {
+  //     block_sector_t indirect_sector = disk_data->indirect_pointer;
+  //     struct indirect_disk *indirect_block = get_indirect_disk(indirect_sector);
+  //     int indirect_index = (pos / BLOCK_SECTOR_SIZE) - 12;
+  //     block_sector_t result_sector = indirect_block->pointers[indirect_index];
+  //     return result_sector;
+
+  //   // position is in one of the blocks in the doubly indirect pointer
+  //   } else {
+  //     block_sector_t doubly_indirect_sector = disk_data->doubly_indirect_pointer;
+  //     struct indirect_disk *doubly_indirect_block = get_indirect_disk(doubly_indirect_sector);
+
+  //     // get the appropriate singly indirect block
+  //     int doubly_indirect_index = (pos/NUM_POINTERS_PER_INDIRECT) - 4*(NUM_DIRECT_POINTERS+NUM_POINTERS_PER_INDIRECT);
+  //     block_sector_t indirect_sector = doubly_indirect_block->pointers[doubly_indirect_index];
+  //     struct indirect_disk *indirect_block = get_indirect_disk(indirect_sector);
+
+  //     // get the appropriate data block
+  //     int indirect_index = (((pos/BLOCK_SECTOR_SIZE) - (NUM_DIRECT_POINTERS+NUM_POINTERS_PER_INDIRECT)) % (NUM_POINTERS_PER_INDIRECT*BLOCK_SECTOR_SIZE)) % NUM_POINTERS_PER_INDIRECT;
+  //     block_sector_t result_sector = indirect_block->pointers[indirect_index];
+  //     return result_sector;
+  //   }
+
+  // } else {
+  //   return -1;
+  // }
+
   if (pos < inode->data.length)
     return inode->data.start + pos / BLOCK_SECTOR_SIZE;
   else
