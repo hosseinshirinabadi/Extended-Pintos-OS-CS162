@@ -353,8 +353,7 @@ inode_close (struct inode *inode)
       if (inode->removed)
         {
           free_map_release (inode->sector, 1);
-          free_map_release (inode->data.start,
-                            bytes_to_sectors (inode->data.length));
+          // free_map_release (inode->data.start, bytes_to_sectors (inode->data.length));
         }
 
       free (inode);
@@ -440,6 +439,13 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   return bytes_read;
 }
 
+
+int direct_pointers_needed(off_t file_length, off_t offset) {
+  int allocated_sectors = DIV_ROUND_UP(file_length, BLOCK_SECTOR_SIZE);
+  int needed_sectors = DIV_ROUND_UP(offset, BLOCK_SECTOR_SIZE) - allocated_sectors;
+
+}
+
 /* Writes SIZE bytes from BUFFER into INODE, starting at OFFSET.
    Returns the number of bytes actually written, which may be
    less than SIZE if end of file is reached or an error occurs.
@@ -453,19 +459,133 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   off_t bytes_written = 0;
   uint8_t *bounce = NULL;
 
+  if (inode->deny_write_cnt) {
+    return 0;
+  }
+
   char buff[BLOCK_SECTOR_SIZE];
   read_from_cache(inode->sector, buff);
   struct inode_disk *disk_data = buff;
 
-  // if (disk_data->length < size + offset) {
-  //   size = disk_data->length;
-  // }
+  int file_length = disk_data->length;
+  int allocated_sectors = bytes_to_sectors(file_length);
+  int needed_sectors = bytes_to_sectors(size + offset) - allocated_sectors;
 
-  if (inode->deny_write_cnt)
-    return 0;
+  if (needed_sectors > 0) {
+    // expand
 
-  while (size > 0)
-    {
+    int num = needed_sectors;
+    if (allocated_sectors < NUM_DIRECT_POINTERS) {
+      if (num > NUM_DIRECT_POINTERS - allocated_sectors) {
+        num = NUM_DIRECT_POINTERS - allocated_sectors;
+      }
+      // allocate needed direct pointers
+      for (int i = 0; i < num; i++) {
+        if (!free_map_allocate (1, &disk_data->direct_pointers[i])) {
+          goto write_data;
+        }
+        needed_sectors--;
+      }
+    }
+
+    if (needed_sectors > 0 && allocated_sectors < (NUM_DIRECT_POINTERS + NUM_POINTERS_PER_INDIRECT)) {
+      int current_pos = allocated_sectors - NUM_DIRECT_POINTERS;
+
+      struct indirect_disk *indirect_block
+      if (current_pos == 0) {
+        indirect_block = malloc(sizeof(struct indirect_disk)); 
+        if (!free_map_allocate (1, &disk_inode->indirect_pointer)) {
+          goto write_data;
+        } 
+      } else {
+        indirect_block = get_indirect_disk(disk_data->indirect_pointer);
+      }
+
+      num = needed_sectors;
+      if (num > NUM_POINTERS_PER_INDIRECT - current_pos) {
+        num = NUM_POINTERS_PER_INDIRECT - current_pos;
+      }
+      for (int i = current_pos; i < current_pos + num; i++) {
+        if (!free_map_allocate (1, indirect_block->pointers + i)) {
+          goto write_data;
+        }
+        needed_sectors--;
+      }
+
+      write_to_cache(disk_data->indirect_pointer, indirect_block);
+      free(indirect_block);
+    }
+
+    if (needed_sectors > 0) {
+      // doubly indirect pointers
+      int current_pos = allocated_sectors - (NUM_DIRECT_POINTERS + NUM_POINTERS_PER_INDIRECT);
+
+
+      struct indirect_disk *doubly_indirect_block
+      if (current_pos == 0) {
+        // need to allocated the doubly indirect block
+        doubly_indirect_block = malloc(sizeof(struct indirect_disk));
+        if (!free_map_allocate (1, &disk_inode->doubly_indirect_pointer)) {
+          goto write_data;
+        } 
+      } else {
+        doubly_indirect_block = get_indirect_disk(disk_data->doubly_indirect_pointer);
+      }
+
+      int used_indirect_blocks = DIV_ROUND_UP(current_pos, NUM_POINTERS_PER_INDIRECT);
+
+      int indirect_offset;
+      int indirect_offset = (current_pos) % NUM_POINTERS_PER_INDIRECT;
+
+      struct indirect_disk *indirect_block;
+      while (needed_sectors > 0) {
+        if (indirect_offset == 0) {
+          indirect_block = malloc(sizeof(struct indirect_disk));
+          if (!free_map_allocate (1, &doubly_indirect_block->pointers[used_indirect_blocks + 1])) {
+            goto write_data;
+          } 
+        } else {
+          indirect_block = read_from_cache(doubly_indirect_block->pointers[used_indirect_blocks + 1])
+        }
+
+
+      }
+
+
+      num = needed_sectors;
+      if (num > NUM_POINTERS_PER_INDIRECT - current_pos) {
+        num = NUM_POINTERS_PER_INDIRECT - current_pos;
+      }
+      for (int i = current_pos; i < current_pos + num; i++) {
+        if (!free_map_allocate (1, indirect_block->pointers + i)) {
+          goto write_data;
+        }
+        needed_sectors--;
+      }
+
+      write_to_cache(disk_data->indirect_pointer, indirect_block);
+    }
+
+
+  }
+
+
+
+
+
+
+
+  write_data:
+
+
+
+
+
+
+
+
+
+  while (size > 0) {
       /* Sector to write, starting byte offset within sector. */
       block_sector_t sector_idx = byte_to_sector (inode, offset);
       int sector_ofs = offset % BLOCK_SECTOR_SIZE;
