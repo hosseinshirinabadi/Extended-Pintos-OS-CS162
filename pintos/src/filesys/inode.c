@@ -97,12 +97,21 @@ byte_to_sector (const struct inode *inode, off_t pos)
       int indirect_index = (pos / BLOCK_SECTOR_SIZE) - 12;
       block_sector_t result_sector = indirect_block->pointers[indirect_index];
       return result_sector;
-      
+
+    // position is in one of the blocks in the doubly indirect pointer
     } else {
-      
+      block_sector_t doubly_indirect_sector = disk_data->doubly_indirect_pointer;
+      struct indirect_disk *doubly_indirect_block = get_indirect_disk(doubly_indirect_sector);
+
+      // get the appropriate singly indirect block
+      int doubly_indirect_index = (pos/NUM_POINTERS_PER_INDIRECT) - 4*(NUM_DIRECT_POINTERS+NUM_POINTERS_PER_INDIRECT);
+      block_sector_t indirect_sector = doubly_indirect_block->pointers[doubly_indirect_index];
+      struct indirect_disk *indirect_block = get_indirect_disk(indirect_sector);
+
+      int indirect_index = (((pos/BLOCK_SECTOR_SIZE) - (NUM_DIRECT_POINTERS+NUM_POINTERS_PER_INDIRECT)) % (NUM_POINTERS_PER_INDIRECT*BLOCK_SECTOR_SIZE)) % NUM_POINTERS_PER_INDIRECT;
+      block_sector_t result_sector = indirect_block->pointers[indirect_index];
+      return result_sector;
     }
-
-
 
   } else {
     return -1;
