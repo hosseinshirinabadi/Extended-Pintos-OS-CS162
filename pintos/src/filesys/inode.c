@@ -18,12 +18,8 @@
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk
   {
-<<<<<<< HEAD
 
-    block_sector_t start;               /* First data sector. */
-=======
     // block_sector_t start;               /* First data sector. */
->>>>>>> c622f9ea176a0e75736cf6a124d57aacde18dcb2
     block_sector_t direct_pointers[NUM_DIRECT_POINTERS];
     block_sector_t indirect_pointer;
     block_sector_t doubly_indirect_pointer;
