@@ -439,13 +439,6 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   return bytes_read;
 }
 
-
-int direct_pointers_needed(off_t file_length, off_t offset) {
-  int allocated_sectors = DIV_ROUND_UP(file_length, BLOCK_SECTOR_SIZE);
-  int needed_sectors = DIV_ROUND_UP(offset, BLOCK_SECTOR_SIZE) - allocated_sectors;
-
-}
-
 /* Writes SIZE bytes from BUFFER into INODE, starting at OFFSET.
    Returns the number of bytes actually written, which may be
    less than SIZE if end of file is reached or an error occurs.
