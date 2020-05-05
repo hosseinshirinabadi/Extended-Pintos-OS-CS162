@@ -64,7 +64,8 @@ static struct inode_disk *get_inode_disk(struct inode *inode) {
 static struct indirect_disk *get_indirect_disk(block_sector_t sector_number) {
   char buffer[BLOCK_SECTOR_SIZE];
   read_from_cache(sector_number, buffer);
-  struct indirect_disk *result = buffer;
+  struct indirect_disk *result = malloc(sizeof(struct indirect_disk));
+  memcpy(result, buffer, BLOCK_SECTOR_SIZE);
   return result;
 }
 
@@ -363,8 +364,76 @@ inode_close (struct inode *inode)
       /* Deallocate blocks if removed. */
       if (inode->removed)
         {
-          free_map_release (inode->sector, 1);
-          // free_map_release (inode->data.start, bytes_to_sectors (inode->data.length));
+
+          struct inode_disk *disk_data = get_inode_disk(inode);
+
+          int sectors = bytes_to_sectors(disk_data->length);
+
+          if(sectors == 0) {
+            free_map_release (inode->sector, 1);
+          } else  {
+
+              //Releasing direct blocks
+              for(int i =0 ; i < NUM_DIRECT_POINTERS; i++) {
+                free_map_release (disk_data->direct_pointers[i], 1);
+                sectors--;
+                if(sectors == 0) {
+                  break;
+                }
+              }
+
+              struct indirect_disk* indirect_block; 
+              if(sectors > 0) {
+                //Releasing indirect data blocks
+                indirect_block = get_indirect_disk(disk_data->indirect_pointer);
+                for(int i =0 ; i < NUM_POINTERS_PER_INDIRECT; i++) {
+                  free_map_release (indirect_block->pointers[i], 1);
+                  sectors--;
+                  if(sectors == 0) {
+                    free_map_release (disk_data->indirect_pointer, 1);
+                    break;
+                  }
+                }
+                free_map_release (disk_data->indirect_pointer, 1);
+
+              }
+
+
+              struct indirect_disk* doubly_indirect_block; 
+              //Releasing doubly indirect pointers
+              if(sectors > 0) {
+                //Releasing indirect data blocks
+                doubly_indirect_block = get_indirect_disk(disk_data->doubly_indirect_pointer);
+                int j = 0;
+
+
+                while(sectors > 0) {
+
+                  indirect_block = get_indirect_disk(doubly_indirect_block->pointers[j]);
+
+                  for(int i =0 ; i < NUM_POINTERS_PER_INDIRECT; i++) {
+                    free_map_release (indirect_block->pointers[i], 1);
+
+                    sectors--;
+                    if(sectors == 0) {
+                      //free_map_release (disk_data->indirect_pointer, 1);
+                      free_map_release (disk_data->doubly_indirect_pointer, 1);
+                      break;
+                    }
+                  }
+
+                  free_map_release (disk_data->indirect_pointer, 1);
+                  j++;
+
+                }
+
+                free_map_release (disk_data->doubly_indirect_pointer, 1);
+
+              }
+              free_map_release (inode->sector, 1);
+              
+            }
+          
         }
 
       free (inode);
