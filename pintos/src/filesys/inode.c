@@ -322,6 +322,7 @@ inode_create (block_sector_t sector, off_t length)
 
       //   write_to_cache(sector, disk_inode);
       // }
+
       free(disk_inode);
       free(zeros);
     }
