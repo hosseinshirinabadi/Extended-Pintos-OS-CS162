@@ -46,7 +46,9 @@ free_map_allocate (size_t cnt, block_sector_t *sectorp)
     }
   if (sector != BITMAP_ERROR)
     *sectorp = sector;
-  lock_release(&bitmap_lock);
+  if (lock_held_by_current_thread(&bitmap_lock)) {
+    lock_release(&bitmap_lock);
+  }
   return sector != BITMAP_ERROR;
 }
 
@@ -60,13 +62,18 @@ free_map_release (block_sector_t sector, size_t cnt)
   }
   bitmap_set_multiple (free_map, sector, cnt, false);
   bitmap_write (free_map, free_map_file);
-  lock_release(&bitmap_lock);
+  if (lock_held_by_current_thread(&bitmap_lock)) {
+    lock_release(&bitmap_lock);
+  }
 }
 
 /* Opens the free map file and reads it from disk. */
 void
 free_map_open (void)
 {
+  if (!lock_held_by_current_thread(&bitmap_lock)) {
+    lock_acquire(&bitmap_lock);
+  }
   free_map_file = file_open (inode_open (FREE_MAP_SECTOR));
   if (free_map_file == NULL) {
     PANIC ("can't open free map");
@@ -74,14 +81,22 @@ free_map_open (void)
   if (!bitmap_read (free_map, free_map_file)) {
     PANIC ("can't read free map");
   }
-
+  if (lock_held_by_current_thread(&bitmap_lock)) {
+    lock_release(&bitmap_lock);
+  }
 }
 
 /* Writes the free map to disk and closes the free map file. */
 void
 free_map_close (void)
 {
+  if (!lock_held_by_current_thread(&bitmap_lock)) {
+    lock_acquire(&bitmap_lock);
+  }
   file_close (free_map_file);
+  if (lock_held_by_current_thread(&bitmap_lock)) {
+    lock_release(&bitmap_lock);
+  }
 }
 
 /* Creates a new free map file on disk and writes the free map to
@@ -90,6 +105,9 @@ void
 free_map_create (void)
 {
   /* Create inode. */
+  if (!lock_held_by_current_thread(&bitmap_lock)) {
+    lock_acquire(&bitmap_lock);
+  }
   if (!inode_create (FREE_MAP_SECTOR, bitmap_file_size (free_map))) {
     PANIC ("free map creation failed");
   }
@@ -101,5 +119,8 @@ free_map_create (void)
   }
   if (!bitmap_write (free_map, free_map_file)) {
     PANIC ("can't write free map");
+  }
+  if (lock_held_by_current_thread(&bitmap_lock)) {
+    lock_release(&bitmap_lock);
   }
 }
