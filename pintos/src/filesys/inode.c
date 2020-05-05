@@ -180,7 +180,8 @@ inode_create (block_sector_t sector, off_t length)
         }
       }
 
-      block_sector_t direct_pointers[NUM_POINTERS_PER_INDIRECT];
+      //block_sector_t direct_pointers[NUM_POINTERS_PER_INDIRECT];
+      block_sector_t *direct_pointers = malloc(sizeof(block_sector_t) * NUM_POINTERS_PER_INDIRECT);
       if (sectors > 12) {
         if (!free_map_allocate (1, &disk_inode->indirect_pointer)) {
           free(disk_inode);
@@ -198,6 +199,8 @@ inode_create (block_sector_t sector, off_t length)
           }
         }
       }
+
+
 
 
       int sectors_left = sectors - (NUM_DIRECT_POINTERS + NUM_POINTERS_PER_INDIRECT);
@@ -275,6 +278,8 @@ inode_create (block_sector_t sector, off_t length)
             free(indirect_pointers_struct2);
           }
         }
+
+        write_to_cache(sector, disk_inode);
       }
       free(disk_inode);
     }
@@ -445,13 +450,6 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   return bytes_read;
 }
 
-
-int direct_pointers_needed(off_t file_length, off_t offset) {
-  int allocated_sectors = DIV_ROUND_UP(file_length, BLOCK_SECTOR_SIZE);
-  int needed_sectors = DIV_ROUND_UP(offset, BLOCK_SECTOR_SIZE) - allocated_sectors;
-
-}
-
 /* Writes SIZE bytes from BUFFER into INODE, starting at OFFSET.
    Returns the number of bytes actually written, which may be
    less than SIZE if end of file is reached or an error occurs.
@@ -581,8 +579,12 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
           needed_sectors--;
         }
 
+
+
         write_to_cache(doubly_indirect_block->pointers[used_indirect_blocks], indirect_block);
         used_indirect_blocks++;
+
+        free(indirect_block);
       }
 
       write_to_cache(disk_data->doubly_indirect_pointer, doubly_indirect_block);
@@ -591,6 +593,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
         disk_data->length = (size + offset);
       }
       write_to_cache(inode->sector, disk_data);
+      free(doubly_indirect_block);
     }
   }
 
