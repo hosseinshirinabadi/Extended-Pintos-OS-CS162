@@ -269,11 +269,11 @@ inode_create (block_sector_t sector, off_t length)
         }
 
           write_to_cache(disk_inode->doubly_indirect_pointer, indirect_pointers);   
-          free(indirect_pointers);
-          free(data_pointers);
-
-
+        
       }
+
+      free(indirect_pointers);
+      free(data_pointers);
 
       write_to_cache(sector, disk_inode);
 
@@ -603,6 +603,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
         if (!free_map_allocate (1, &disk_data->direct_pointers[i])) {
           goto write_data;
         }
+
         needed_sectors--;
       }
     }
