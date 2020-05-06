@@ -108,7 +108,6 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 
-    //struct file *exec_file;
     // list of open files
     struct list files;
     // keeps track of the maximum fd created
@@ -119,6 +118,8 @@ struct thread
     struct thread *parent_thread;
     // executable file
     struct file *exec_file;
+    // current directory of the process
+    struct dir *current_directory;
 #endif
 
     /* Owned by thread.c. */

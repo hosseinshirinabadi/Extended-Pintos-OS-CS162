@@ -29,7 +29,7 @@ static bool validate_arg (void *arg);
 
 
 // global lock for file system level
-// struct lock flock;
+struct lock flock;
 
 // finds the open file of the current thread that matches fd
 open_file *get_file_by_fd (int fd) {
@@ -172,7 +172,7 @@ bool validate_arg (void *arg) {
 void
 syscall_init (void)
 {
-  // lock_init(&flock);
+  lock_init(&flock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -207,8 +207,8 @@ syscall_handler (struct intr_frame *f UNUSED)
       }
       printf ("%s: exit(%d)\n", &thread_current ()->name, args[1]);
       thread_exit ();
-  }
-  else if (args[0] == SYS_HALT) {
+
+  } else if (args[0] == SYS_HALT) {
       shutdown_power_off();
 
   } else if (args[0] == SYS_PRACTICE) {
@@ -345,7 +345,29 @@ syscall_handler (struct intr_frame *f UNUSED)
   	  } else {
   	  	close_helper(fd); 
   	  }
-  	  
+
+  } else if (args[0] == SYS_CHDIR) {
+    const char *dir = args[1];
+    struct thread *cur = thread_current();
+    
+
+  } else if (args[0] == SYS_MKDIR) {
+    const char *dir = args[1];
+
+
+  } else if (args[0] == SYS_READDIR) {
+    int fd = args[1];
+    char *name = args[2];
+
+
+  } else if (args[0] == SYS_ISDIR) {
+    int fd = args[1];
+
+
+  } else if (args[0] == SYS_INUMBER) {
+    int fd = args[1];
+
+
   } else {
   	f->eax = -1;
 	  printf ("%s: exit(%d)\n", &thread_current ()->name, -1);

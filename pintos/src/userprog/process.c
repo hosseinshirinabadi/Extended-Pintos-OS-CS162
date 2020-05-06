@@ -222,7 +222,7 @@ process_exit (void)
   
   //Freeing the resouces
 
-  // lock_acquire(&flock);
+  lock_acquire(&flock);
   struct list *current_files = &cur->files;
   while (!list_empty(current_files)) {
     struct list_elem *e = list_pop_back(current_files);
@@ -230,7 +230,7 @@ process_exit (void)
     file_close(current_file->file);
     free(current_file);
   }
-  // lock_release(&flock);
+  lock_release(&flock);
 
   if (cur->exec_file != NULL) {
     file_close(cur->exec_file);
