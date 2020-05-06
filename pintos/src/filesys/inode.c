@@ -458,10 +458,7 @@ inode_close (struct inode *inode)
             // free(disk_data);
           } else {
 
-              num = sectors;
-              if (num > NUM_DIRECT_POINTERS) {
-                num = NUM_DIRECT_POINTERS;
-              }
+              
               // Releasing direct blocks
               for (int i = 0; i < NUM_DIRECT_POINTERS; i++) {
                 free_map_release(disk_data->direct_pointers[i], 1);
