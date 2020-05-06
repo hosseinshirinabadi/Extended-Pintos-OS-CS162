@@ -83,7 +83,7 @@ byte_to_sector (const struct inode *inode, off_t pos)
 
   struct inode_disk *disk_data = get_inode_disk(inode);
 
-  if (pos < 0) {
+  if (pos < 0 || pos > disk_data->length) {
     // free(disk_data);
     return -1;
   }
@@ -119,6 +119,10 @@ byte_to_sector (const struct inode *inode, off_t pos)
       // int doubly_indirect_index = (DIV_ROUND_UP(pos,512) - (12 + 128)) / 128;
       int doubly_indirect_index = (sector_idx - (12 + 128)) / 128;
 
+      if(doubly_indirect_index < 0) {
+        doubly_indirect_index = 0;
+      }
+
       // int doubly_indirect_index = (pos/NUM_POINTERS_PER_INDIRECT) - 4*(NUM_DIRECT_POINTERS+NUM_POINTERS_PER_INDIRECT);
       block_sector_t indirect_sector = doubly_indirect_block->pointers[doubly_indirect_index];
       struct indirect_disk *indirect_block = get_indirect_disk(indirect_sector);
@@ -126,7 +130,13 @@ byte_to_sector (const struct inode *inode, off_t pos)
       // get the appropriate data block
       // int indirect_index = (((pos/BLOCK_SECTOR_SIZE) - (NUM_DIRECT_POINTERS+NUM_POINTERS_PER_INDIRECT)) % (NUM_POINTERS_PER_INDIRECT*BLOCK_SECTOR_SIZE)) % NUM_POINTERS_PER_INDIRECT;
       // int indirect_index = (DIV_ROUND_UP(pos,512) - (12 + 128)) % 128;
-      int indirect_index = (sector_idx - (12 + 128)) % 128;
+      int indirect_index = (sector_idx - (12 + 128));
+
+      if(indirect_index < 0) {
+        indirect_index = 0;
+      }
+       indirect_index =  indirect_index % 128;
+
       block_sector_t result_sector = indirect_block->pointers[indirect_index];
       // free(indirect_block);
       // free(doubly_indirect_block);
@@ -179,8 +189,8 @@ inode_create (block_sector_t sector, off_t length)
   if (disk_inode != NULL) {
 
       // char *zeros = malloc(BLOCK_SECTOR_SIZE);
-      char zeros[BLOCK_SECTOR_SIZE];
-      memset(zeros, 0, BLOCK_SECTOR_SIZE);
+      // char zeros[BLOCK_SECTOR_SIZE];
+      // memset(zeros, 0, BLOCK_SECTOR_SIZE);
 
       size_t sectors = bytes_to_sectors (length);
       disk_inode->length = length;
@@ -199,17 +209,21 @@ inode_create (block_sector_t sector, off_t length)
 
       // create direct data blocks
       for (int i = 0; i < num; i++) {
-        if (!free_map_allocate (1, disk_inode->direct_pointers + i)) {
+        if (!free_map_allocate (1, &disk_inode->direct_pointers[i])) {
           // free(zeros);
           free(disk_inode);
           return false;
         }
+        char zeros[BLOCK_SECTOR_SIZE];
+        memset(zeros, 0, BLOCK_SECTOR_SIZE);
         write_to_cache(disk_inode->direct_pointers[i], zeros);
       }
 
       //block_sector_t direct_pointers[NUM_POINTERS_PER_INDIRECT];
-      block_sector_t *direct_pointers = malloc(sizeof(block_sector_t) * NUM_POINTERS_PER_INDIRECT);
-      memset(direct_pointers, 0, sizeof(block_sector_t) * NUM_POINTERS_PER_INDIRECT);
+      //block_sector_t *direct_pointers = malloc(sizeof(block_sector_t) * NUM_POINTERS_PER_INDIRECT);
+      //memset(direct_pointers, 0, sizeof(block_sector_t) * NUM_POINTERS_PER_INDIRECT);
+      struct indirect_disk *direct_pointers = malloc(sizeof(struct indirect_disk));
+      memset(direct_pointers, 0, sizeof(struct indirect_disk));
       if (sectors > 12) {
         if (!free_map_allocate (1, &disk_inode->indirect_pointer)) {
           free(direct_pointers);
@@ -223,16 +237,20 @@ inode_create (block_sector_t sector, off_t length)
           num = NUM_POINTERS_PER_INDIRECT;
         }
         for (int i = 0; i < num; i++) {
-          if (!free_map_allocate (1, direct_pointers + i)) {
+          if (!free_map_allocate (1, &direct_pointers->pointers[i])) {
             free(direct_pointers);
             free(disk_inode);
             // free(zeros);
             return false;
           }
-          write_to_cache(direct_pointers[i], zeros);
+          
+          char zeros[BLOCK_SECTOR_SIZE];
+          memset(zeros, 0, BLOCK_SECTOR_SIZE);
+          write_to_cache(direct_pointers->pointers[i], zeros);
         }
 
-        write_to_cache(disk_inode->indirect_pointer, direct_pointers);
+        write_to_cache(disk_inode->indirect_pointer,  direct_pointers);
+        //write_to_cache(disk_inode->indirect_pointer, direct_pointers);
       }
 
       free(direct_pointers);
@@ -247,11 +265,17 @@ inode_create (block_sector_t sector, off_t length)
       //block_sector_t indirect_pointers[num_indirects];
       //block_sector_t data_pointers[num_indirects][NUM_POINTERS_PER_INDIRECT];
       // block_sector_t* indirect_pointers = malloc(sizeof(block_sector_t) * num_indirects);
-      block_sector_t* indirect_pointers = malloc(sizeof(block_sector_t) * NUM_POINTERS_PER_INDIRECT);
-      memset(indirect_pointers, 0, sizeof(block_sector_t) * NUM_POINTERS_PER_INDIRECT);
+      // block_sector_t* indirect_pointers = malloc(sizeof(block_sector_t) * NUM_POINTERS_PER_INDIRECT);
+      // memset(indirect_pointers, 0, sizeof(block_sector_t) * NUM_POINTERS_PER_INDIRECT);
 
-      block_sector_t* data_pointers = malloc(sizeof(block_sector_t) * num_indirects * NUM_POINTERS_PER_INDIRECT);
-      memset(indirect_pointers, 0, sizeof(block_sector_t) * num_indirects * NUM_POINTERS_PER_INDIRECT);
+      struct indirect_disk *indirect_pointers = malloc(sizeof(struct indirect_disk)); 
+      memset(indirect_pointers, 0, sizeof(struct indirect_disk));
+
+
+      
+      //block_sector_t* data_pointers = malloc(sizeof(block_sector_t) * num_indirects * NUM_POINTERS_PER_INDIRECT);
+      struct indirect_disk data_pointers[num_indirects];
+      
 
       if (sectors > NUM_DIRECT_POINTERS + NUM_POINTERS_PER_INDIRECT) {
         if (!free_map_allocate (1, &disk_inode->doubly_indirect_pointer)) {
@@ -268,7 +292,7 @@ inode_create (block_sector_t sector, off_t length)
             num_left = NUM_POINTERS_PER_INDIRECT;
           }
 
-          if (!free_map_allocate (1, &indirect_pointers[i])) {
+          if (!free_map_allocate (1, &indirect_pointers->pointers[i])) {
             free(indirect_pointers);
             free(data_pointers);
             // free(zeros);
@@ -278,18 +302,22 @@ inode_create (block_sector_t sector, off_t length)
 
 
           for (int j = 0; j < num_left; j++) {
-            if (!free_map_allocate (1, data_pointers + ((i * NUM_POINTERS_PER_INDIRECT) + j))) {
+            //if (!free_map_allocate (1, data_pointers + ((i * NUM_POINTERS_PER_INDIRECT) + j))) {
+            if (!free_map_allocate (1, &(data_pointers[i].pointers[j]))) {
               free(indirect_pointers);
               free(data_pointers);
               // free(zeros);
               free(disk_inode);
               return false;
             }
-            write_to_cache(data_pointers + ((i * NUM_POINTERS_PER_INDIRECT) + j), zeros);
+            char zeros[BLOCK_SECTOR_SIZE];
+            memset(zeros, 0, BLOCK_SECTOR_SIZE);
+            write_to_cache(data_pointers[i].pointers[j], zeros);
             sectors_left--;
           }
 
-          write_to_cache(indirect_pointers[i], data_pointers + (i * NUM_POINTERS_PER_INDIRECT));
+          
+          write_to_cache(indirect_pointers->pointers[i],  &data_pointers[i]);
 
         }
 
@@ -297,7 +325,7 @@ inode_create (block_sector_t sector, off_t length)
       }
 
       free(indirect_pointers);
-      free(data_pointers);
+
 
       write_to_cache(sector, disk_inode);
 
