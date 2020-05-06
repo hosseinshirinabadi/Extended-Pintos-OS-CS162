@@ -139,11 +139,6 @@ byte_to_sector (const struct inode *inode, off_t pos)
     // free(disk_data);
     return -1;
   }
-
-  // if (pos < inode->data.length)
-  //   return inode->data.start + pos / BLOCK_SECTOR_SIZE;
-  // else
-  //   return -1;
 }
 
 /* List of open inodes, so that opening a single inode twice
@@ -289,8 +284,11 @@ inode_create (block_sector_t sector, off_t length)
             sectors_left--;
           }
 
-          write_to_cache(indirect_pointers[i], data_pointers + (i * NUM_POINTERS_PER_INDIRECT));
+          char buf[BLOCK_SECTOR_SIZE];
+          memcpy(buf, data_pointers + (i * NUM_POINTERS_PER_INDIRECT), BLOCK_SECTOR_SIZE);
+          write_to_cache(indirect_pointers[i], buf);
 
+          // disk_inode->
         }
 
         write_to_cache(disk_inode->doubly_indirect_pointer, indirect_pointers);   
