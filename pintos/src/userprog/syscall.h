@@ -3,6 +3,6 @@
 
 void syscall_init (void);
 
-// struct lock flock;
+struct lock flock;
 
 #endif /* userprog/syscall.h */

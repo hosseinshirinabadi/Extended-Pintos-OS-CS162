@@ -186,6 +186,7 @@ thread_create (const char *name, int priority,
   #ifdef USERPROG
   // set the parent of the newly created thread to the current thread
   t->parent_thread = thread_current();
+  t->current_directory = t->parent_thread->current_directory;
   #endif
 
   /* Stack frame for kernel_thread(). */
@@ -478,6 +479,8 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->children);
   t->current_fd = 2;
   t->parent_thread = NULL;
+  struct dir *root = dir_open_root();
+  t->current_directory = root;
   #endif
 
 }

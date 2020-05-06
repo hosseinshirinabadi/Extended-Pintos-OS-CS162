@@ -23,10 +23,13 @@ struct inode_disk
     block_sector_t direct_pointers[NUM_DIRECT_POINTERS];
     block_sector_t indirect_pointer;
     block_sector_t doubly_indirect_pointer;
+
     bool is_dir;
+    block_sector_t parent_sector;
+
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
-    uint32_t unused[111];               /* Not used. */ // 125 old, 112 new
+    uint32_t unused[110];               /* Not used. */ // 125 old, 111 new
   };
 
 
@@ -458,12 +461,12 @@ inode_close (struct inode *inode)
             // free(disk_data);
           } else {
 
-              
+
               // Releasing direct blocks
               for (int i = 0; i < NUM_DIRECT_POINTERS; i++) {
                 free_map_release(disk_data->direct_pointers[i], 1);
                 sectors--;
-                if(sectors == 0) {
+                if (sectors == 0) {
                   break;
                 }
               }
@@ -475,7 +478,7 @@ inode_close (struct inode *inode)
                 for (int i = 0; i < NUM_POINTERS_PER_INDIRECT; i++) {
                   free_map_release (indirect_block->pointers[i], 1);
                   sectors--;
-                  if(sectors == 0) {
+                  if (sectors == 0) {
                     break;
                   }
                 }
