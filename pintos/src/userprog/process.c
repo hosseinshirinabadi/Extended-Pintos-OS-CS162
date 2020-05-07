@@ -85,6 +85,8 @@ process_execute (const char *file_name)
   parser(fn_copy);
   char *command = argv[0];
 
+  thread_current()->current_directory = dir_open_root();
+
   child *new_child = malloc(sizeof(child));
   if (!new_child) {
     return -1;

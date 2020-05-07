@@ -318,8 +318,14 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
 
   if (path[0] == '/') {
     current_dir = dir_open_root();
+    inode = current_dir->inode;
+    strlcpy(file_name, next_part, NAME_MAX + 1);
   } else {
     current_dir = dir_reopen(dir);
+  }
+
+  if (!current_dir) {
+    return NULL;
   }
 
   // path = "/desktop/162/file2.txt\0"
@@ -363,11 +369,12 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
       strlcpy(file_name, next_part, NAME_MAX + 1);
       status = get_next_part(next_part, &path);
     } else {
-      status = get_next_part(next_part, &path);
+      char buf[NAME_MAX + 1] = {0};
+      status = get_next_part(buf, &path);
       if (status != 0) {
         return NULL;
       }
-      dir_close(parent_dir);
+      //dir_close(parent_dir);
       parent_dir = current_dir;
       strlcpy(file_name, next_part, NAME_MAX + 1);
     }

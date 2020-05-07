@@ -55,9 +55,26 @@ bool create_helper (const char *file, unsigned initial_size) {
 //Helper for open syscall
 int open_helper (const char *file) {
 	// lock_acquire(&flock);
-	struct file *opened_file = filesys_open(file);
+  struct thread *current_thread = thread_current();
+  struct dir* dir;
+
+  struct resolve_metadata *metadata = resolve_path(current_thread->current_directory, file, false);
+  if (!metadata) {
+    return NULL;
+  }
+  if(inode_is_dir(get_inode_disk(get_last_inode(metadata)))) {
+    dir = dir_open(get_last_inode(metadata));
+    int fd = (current_thread->current_fd)++;
+    open_file *file_element = malloc(sizeof(open_file));
+    file_element->fd = fd;
+    file_element->file_name = file;
+    file_element->file = NULL;
+    file_element->dir = dir;
+    list_push_back(&current_thread->files, &file_element->elem);
+  }
+	struct file *opened_file = filesys_open(get_last_filename(metadata));
 	if (opened_file) {
-		struct thread *current_thread = thread_current();
+		
 		int fd = (current_thread->current_fd)++;
 		open_file *file_element = malloc(sizeof(open_file));
 		file_element->fd = fd;
