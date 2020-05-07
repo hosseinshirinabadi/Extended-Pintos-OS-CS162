@@ -93,6 +93,7 @@ filesys_open (const char *name)
   return file_open (inode);
 }
 
+
 /* Opens the file with the given NAME.
    Returns the new file if successful or a null pointer
    otherwise.
@@ -111,6 +112,7 @@ filesys_open_dir (const char *name)
 
   return dir_open(inode);
 }
+
 
 
 

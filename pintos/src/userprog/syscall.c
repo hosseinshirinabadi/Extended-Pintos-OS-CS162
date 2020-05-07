@@ -55,6 +55,7 @@ bool create_helper (const char *file, unsigned initial_size) {
 //Helper for open syscall
 int open_helper (const char *file) {
 	// lock_acquire(&flock);
+<<<<<<< HEAD
   struct thread *current_thread = thread_current();
   struct dir* dir;
 
@@ -87,6 +88,7 @@ int open_helper (const char *file) {
 		// lock_release(&flock);
 		return -1;
 	}
+
 }
 
 //Helper for filesize syscall
@@ -225,6 +227,10 @@ bool mkdir_helper (const char *dir) {
 
   setup_dots_dir (dir_sector, parent_dir);
   return true;
+}
+
+bool readdir_helper (int fd, char *name) {
+
 }
   
 
@@ -428,6 +434,13 @@ syscall_handler (struct intr_frame *f UNUSED)
   } else if (args[0] == SYS_MKDIR) {
     const char *dir = args[1];
 
+    if (!validate_arg(dir)) {
+        f->eax = -1;
+        printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+        thread_exit ();
+      } else {
+        f->eax = mkdir_helper(dir);
+      }
 
 
   } else if (args[0] == SYS_READDIR) {
