@@ -93,6 +93,29 @@ filesys_open (const char *name)
   return file_open (inode);
 }
 
+struct file *filesys_open_file (const char *name, struct dir *parent_dir) { 
+
+  struct inode *inode = NULL;
+
+  if (dir != NULL)
+    dir_lookup (parent_dir, name, &inode);
+  dir_close (dir);
+
+  return file_open (inode);
+}
+
+// struct file *filesys_open_dir (const char *name, struct dir *parent_dir) { 
+
+//   struct inode *inode = NULL;
+
+//   if (dir != NULL)
+//     dir_lookup (parent_dir, name, &inode);
+//   dir_close (dir);
+
+//   struct dir *opened_dir = dir_open(inode);
+//   return opened_dir->inode;
+// }
+
 /* Deletes the file named NAME.
    Returns true if successful, false on failure.
    Fails if no file named NAME exists,
