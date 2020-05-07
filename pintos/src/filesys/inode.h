@@ -7,8 +7,8 @@
 
 struct bitmap;
 struct inode_disk;
-struct inode;
-struct indirect_disk;
+// struct inode;
+// struct indirect_disk;
 
 void inode_init (void);
 bool inode_create (block_sector_t, off_t);

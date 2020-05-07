@@ -51,21 +51,21 @@ dir_create (block_sector_t sector, size_t entry_cnt)
 struct dir *
 dir_open (struct inode *inode)
 {
-  if (inode_is_dir(get_inode_disk(inode))) {
-    struct dir *dir = calloc (1, sizeof *dir);
-    if (inode != NULL && dir != NULL)
-      {
-        dir->inode = inode;
-        dir->pos = 0;
-        return dir;
-      }
-    else
-      {
-        inode_close (inode);
-        free (dir);
-        return NULL;
+
+  struct dir *dir = calloc (1, sizeof *dir);
+  if (inode != NULL && dir != NULL)
+    {
+      dir->inode = inode;
+      dir->pos = 0;
+      return dir;
     }
+  else
+    {
+      inode_close (inode);
+      free (dir);
+      return NULL;
   }
+
   return NULL;
 }
 
