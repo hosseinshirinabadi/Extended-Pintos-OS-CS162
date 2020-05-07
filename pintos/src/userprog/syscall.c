@@ -159,6 +159,24 @@ void close_helper (int fd) {
 		// lock_release(&flock);
 	}
 }
+
+
+//Helper for close syscall
+bool chdir_helper (char* dirName) {
+  struct thread *current_thread = thread_current ();
+  struct inode* dirInode = resolve_path(current_thread->current_directory, dirName);
+  if (dirInode == NULL) {
+    return false;
+  }
+
+  if(!get_inode_disk(dirInode)->is_dir) {
+    return false;
+  }
+
+  current_thread->current_directory = dir_open(dirInode);
+  return true;
+
+}
   
 
 //Validate arguments for all syscalls
@@ -348,11 +366,19 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   } else if (args[0] == SYS_CHDIR) {
     const char *dir = args[1];
-    struct thread *cur = thread_current();
+
+    if (!validate_arg(dir)) {
+        f->eax = -1;
+        printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+        thread_exit ();
+      } else {
+        f->eax = chdir_helper(dir);
+      }
     
 
   } else if (args[0] == SYS_MKDIR) {
     const char *dir = args[1];
+
 
 
   } else if (args[0] == SYS_READDIR) {

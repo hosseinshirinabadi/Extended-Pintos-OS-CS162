@@ -58,6 +58,23 @@ filesys_create (const char *name, off_t initial_size)
   return success;
 }
 
+block_sector_t
+filesys_create_dir (const char *name, off_t initial_size, struct dir* pDir)
+{
+  block_sector_t inode_sector = 0;
+  struct dir *dir = pDir;
+  bool success = (dir != NULL
+                  && free_map_allocate (1, &inode_sector)
+                  && inode_create (inode_sector, initial_size)
+                  && dir_add (dir, name, inode_sector));
+
+  if (!success && inode_sector != 0)
+    free_map_release (inode_sector, 1);
+  dir_close (dir);
+
+  return inode_sector;
+}
+
 /* Opens the file with the given NAME.
    Returns the new file if successful or a null pointer
    otherwise.

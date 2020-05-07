@@ -11,6 +11,7 @@ struct dir
   {
     struct inode *inode;                /* Backing store. */
     off_t pos;                          /* Current position. */
+    //struct dir* parent_directory;
   };
 
 /* A single directory entry. */
@@ -26,27 +27,38 @@ struct dir_entry
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
-  return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+  //return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+  bool check = inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+  if (check) {
+    get_inode_disk(inode_open(sector)->sector)->is_dir = true;
+  }
+  return check;
 }
+
+
+
 
 /* Opens and returns the directory for the given INODE, of which
    it takes ownership.  Returns a null pointer on failure. */
 struct dir *
 dir_open (struct inode *inode)
 {
-  struct dir *dir = calloc (1, sizeof *dir);
-  if (inode != NULL && dir != NULL)
-    {
-      dir->inode = inode;
-      dir->pos = 0;
-      return dir;
+  if (get_inode_disk(inode)->is_dir) {
+    struct dir *dir = calloc (1, sizeof *dir);
+    if (inode != NULL && dir != NULL)
+      {
+        dir->inode = inode;
+        dir->pos = 0;
+        return dir;
+      }
+    else
+      {
+        inode_close (inode);
+        free (dir);
+        return NULL;
     }
-  else
-    {
-      inode_close (inode);
-      free (dir);
-      return NULL;
-    }
+  }
+  return NULL;
 }
 
 /* Opens the root directory and returns a directory for it.
@@ -261,10 +273,86 @@ static int get_next_part (char part[NAME_MAX + 1], const char **srcp) {
   return 1;
 }
 
-// void resolve_absolute_path(char *path) {
-//   char part[NAME_MAX + 1] = {0};
-//   int status = get_next_part(part, &path);
-//   while (status != 0)
+struct inode* resolve_path(struct dir *dir, char *path) {
+  char part[NAME_MAX + 1] = {0};
+  int status = get_next_part(part, &path);
+  struct dir* current_Dir;
+  struct inode_disk* inode;
+  bool pathTraverse = false;
+
+  if (path[0] == '/') {
+    current_Dir = dir_open_root();
+  } else {
+    current_Dir = dir_reopen(dir);
+  }
+  while (status > 0 ) {
+    
+  
+    pathTraverse = dir_lookup(current_Dir, part, &inode)
+    if (pathTraverse == 0) {
+      return NULL;
+    }
+
+    if(get_inode_disk(inode)->is_dir) {
+      current_Dir = dir_open(inode);
+    } else {
+      current_Dir = inode_open(inode);
+    }
+    current_Dir = dir_open(inode);
+    if(current_Dir == NULL) {
+      return NULL;
+    }
+    status = get_next_part(part, &path); 
+  }
+
+  return inode;
+ }
+
+ struct dir* mkdir_last_dir(struct dir *dir, char *path) {
+  char part[NAME_MAX + 1] = {0};
+  int status = get_next_part(part, &path);
+  struct dir* current_Dir;
+  struct dir* parentDir = NULL;
+  struct inode_disk* inode;
+  bool pathTraverse = false;
+
+  if (path[0] == '/') {
+    current_Dir = dir_open_root();
+  } else {
+    current_Dir = dir_reopen(dir);
+  }
+  while (status > 0 ) {
+    
+  
+    pathTraverse = dir_lookup(current_Dir, part, &inode)
+    if (pathTraverse == 0) {
+      return NULL;
+    }
+
+    if(get_inode_disk(inode)->is_dir) {
+      current_Dir = dir_open(inode);
+    } else {
+      return NULL;
+    }
+    
+    parentDir = current_Dir;
+    current_Dir = dir_open(inode);
+    if(current_Dir == NULL) {
+      return NULL;
+    } 
+    status = get_next_part(part, &path);
+  }
+
+  return parentDir;
+ }
 
 
-// }
+
+ void setup_dots_dir(block_sector_t sector, struct thread* t) {
+    
+    struct dir* child = dir_open(inode_open(sector));
+    dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
+    dir_add(dir, "..", t->current_Dir->inode->sector);
+    dir_add(dir, ".", sector);
+
+  }

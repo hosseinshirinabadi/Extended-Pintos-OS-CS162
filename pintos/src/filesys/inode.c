@@ -25,11 +25,10 @@ struct inode_disk
     block_sector_t doubly_indirect_pointer;
 
     bool is_dir;
-    block_sector_t parent_sector;
 
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
-    uint32_t unused[110];               /* Not used. */ // 125 old, 111 new
+    uint32_t unused[111];               /* Not used. */ // 125 old, 111 new
   };
 
 
