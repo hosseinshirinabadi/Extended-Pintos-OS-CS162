@@ -11,6 +11,8 @@
 #include "filesys/filesys.h"
 #include "lib/user/syscall.h"
 #include "userprog/process.h"
+#include "filesys/inode.h"
+#include "filesys/directory.h"
 
 
 static void syscall_handler (struct intr_frame *);
@@ -164,18 +166,44 @@ void close_helper (int fd) {
 //Helper for close syscall
 bool chdir_helper (char* dirName) {
   struct thread *current_thread = thread_current ();
-  struct inode* dirInode = resolve_path(current_thread->current_directory, dirName);
-  if (dirInode == NULL) {
+  struct resolve_metadata *metadata = resolve_path(current_thread->current_directory, dirName);
+  if (metadata == NULL) {
     return false;
   }
 
-  if(!get_inode_disk(dirInode)->is_dir) {
-    return false;
-  }
+  // struct dir *parent_dir = metadata->parent_dir;
+  struct inode *last_inode = get_last_inode(metadata);
+  // char file_name[NAME_MAX + 1] = metadata->last_file_name;
 
-  current_thread->current_directory = dir_open(dirInode);
+  struct inode_disk *disk_data = get_inode_disk(last_inode);
+  if (disk_data != NULL) {
+    if (!inode_is_dir(disk_data)) {
+      return false;
+    }
+  }
+  
+  dir_close(current_thread->current_directory);
+  // dir_close(parent_dir);
+  current_thread->current_directory = dir_open(last_inode);
   return true;
+}
 
+// dir = "/desktop/162/files"
+bool mkdir_helper (const char *dir) {
+  struct thread *current_thread = thread_current ();
+  struct resolve_metadata *metadata = resolve_path(current_thread->current_directory, dirName);
+
+  if (!metadata) {
+    return false;
+  }
+
+  struct dir *parent_dir = get_parent_dir(metadata);
+  struct inode *last_inode = get_last_inode(metadata);
+
+  struct inode_disk *disk_data = get_inode_disk(last_inode);
+  if (!inode_is_dir(disk_data)) {
+    return false;
+  }
 }
   
 

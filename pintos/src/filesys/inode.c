@@ -30,6 +30,14 @@ struct inode_disk
     uint32_t unused[111];               /* Not used. */ // 125 old, 111 new
   };
 
+bool inode_is_dir(struct inode_disk *disk_data) {
+  return disk_data->is_dir;
+}
+
+void set_is_dir(struct inode_disk *disk_data, bool value) {
+  disk_data->is_dir = value;
+}
+
 
 struct indirect_disk {
   block_sector_t pointers[NUM_POINTERS_PER_INDIRECT];
@@ -54,14 +62,14 @@ struct inode
   };
 
 
-static struct inode_disk *get_inode_disk(struct inode *inode) {
+struct inode_disk *get_inode_disk(struct inode *inode) {
   char buffer[BLOCK_SECTOR_SIZE];
   read_from_cache(inode->sector, buffer);
   struct inode_disk *result = buffer;
   return result;
 }
 
-static struct indirect_disk *get_indirect_disk(block_sector_t sector_number) {
+struct indirect_disk *get_indirect_disk(block_sector_t sector_number) {
   char buffer[BLOCK_SECTOR_SIZE];
   read_from_cache(sector_number, buffer);
   struct inode_disk *result = buffer;
@@ -166,6 +174,7 @@ inode_create (block_sector_t sector, off_t length)
       size_t sectors = bytes_to_sectors (length);
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
+      disk_inode->is_dir = false;
 
       if (sectors == 0) {
         free(disk_inode);

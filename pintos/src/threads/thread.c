@@ -186,7 +186,12 @@ thread_create (const char *name, int priority,
   #ifdef USERPROG
   // set the parent of the newly created thread to the current thread
   t->parent_thread = thread_current();
-  t->current_directory = t->parent_thread->current_directory;
+
+  // set the current directory of the newly created thread to the cwd of the parent
+  if (t->parent_thread->current_directory) {
+    t->current_directory = dir_reopen(t->parent_thread->current_directory);
+  }
+  
   #endif
 
   /* Stack frame for kernel_thread(). */

@@ -30,7 +30,15 @@ dir_create (block_sector_t sector, size_t entry_cnt)
   //return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
   bool check = inode_create (sector, entry_cnt * sizeof (struct dir_entry));
   if (check) {
-    get_inode_disk(inode_open(sector)->sector)->is_dir = true;
+    struct inode *inode_opened = inode_open(sector);
+    if (inode_opened) {
+      struct inode_disk *disk_data = get_inode_disk(inode_opened);
+      // disk_data->is_dir = true;
+      set_is_dir(disk_data, true);
+      write_to_cache(sector, disk_data);
+    } else {
+      return false;
+    }
   }
   return check;
 }
@@ -43,7 +51,7 @@ dir_create (block_sector_t sector, size_t entry_cnt)
 struct dir *
 dir_open (struct inode *inode)
 {
-  if (get_inode_disk(inode)->is_dir) {
+  if (inode_is_dir(get_inode_disk(inode))) {
     struct dir *dir = calloc (1, sizeof *dir);
     if (inode != NULL && dir != NULL)
       {
@@ -273,86 +281,81 @@ static int get_next_part (char part[NAME_MAX + 1], const char **srcp) {
   return 1;
 }
 
-struct inode* resolve_path(struct dir *dir, char *path) {
+struct resolve_metadata {
+  struct dir *parent_dir;
+  struct inode *last_inode;
+  char last_file_name[NAME_MAX + 1];
+};
+
+struct dir *get_parent_dir (struct resolve_metadata *metadata) {
+  return metadata->parent_dir;
+}
+
+struct inode *get_last_inode (struct resolve_metadata *metadata) {
+  return metadata->last_inode;
+}
+
+char *get_last_filename (struct resolve_metadata *metadata) {
+  return metadata->last_file_name;
+}
+
+
+// path = /desktop/162/file.txt
+// path = /desktio/162/files
+// path = "/desktop/162/file.txt\0"
+struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir) {
   char part[NAME_MAX + 1] = {0};
-  int status = get_next_part(part, &path);
-  struct dir* current_Dir;
+
+  struct resolve_metadata *result_metadata = malloc(sizeof(struct resolve_metadata));
+
+  struct dir *current_dir;
+  struct dir *parent_dir;
+  char file_name[NAME_MAX + 1] = {0};
   struct inode_disk* inode;
   bool pathTraverse = false;
 
+  int status = get_next_part(part, &path);
+
   if (path[0] == '/') {
-    current_Dir = dir_open_root();
+    current_dir = dir_open_root();
+    parent_dir = current_dir;
   } else {
-    current_Dir = dir_reopen(dir);
+    current_dir = dir_reopen(dir);
+    parent_dir = current_dir;
   }
-  while (status > 0 ) {
-    
-  
-    pathTraverse = dir_lookup(current_Dir, part, &inode)
+
+  while (status > 0) {
+    pathTraverse = dir_lookup(current_dir, part, &inode);
     if (pathTraverse == 0) {
       return NULL;
     }
 
-    if(get_inode_disk(inode)->is_dir) {
-      current_Dir = dir_open(inode);
+    if (inode_is_dir(get_inode_disk(inode))) {
+      dir_close(parent_dir);
+      parent_dir = current_dir;
+      current_dir = dir_open(inode);
     } else {
-      current_Dir = inode_open(inode);
+      dir_close(parent_dir);
+      parent_dir = current_dir;
+      strlcpy(file_name, part, NAME_MAX + 1);
     }
-    current_Dir = dir_open(inode);
-    if(current_Dir == NULL) {
-      return NULL;
-    }
+
     status = get_next_part(part, &path); 
   }
 
-  return inode;
- }
-
- struct dir* mkdir_last_dir(struct dir *dir, char *path) {
-  char part[NAME_MAX + 1] = {0};
-  int status = get_next_part(part, &path);
-  struct dir* current_Dir;
-  struct dir* parentDir = NULL;
-  struct inode_disk* inode;
-  bool pathTraverse = false;
-
-  if (path[0] == '/') {
-    current_Dir = dir_open_root();
-  } else {
-    current_Dir = dir_reopen(dir);
-  }
-  while (status > 0 ) {
-    
-  
-    pathTraverse = dir_lookup(current_Dir, part, &inode)
-    if (pathTraverse == 0) {
-      return NULL;
-    }
-
-    if(get_inode_disk(inode)->is_dir) {
-      current_Dir = dir_open(inode);
-    } else {
-      return NULL;
-    }
-    
-    parentDir = current_Dir;
-    current_Dir = dir_open(inode);
-    if(current_Dir == NULL) {
-      return NULL;
-    } 
-    status = get_next_part(part, &path);
+  if (status != 0) {
+    return NULL;
   }
 
-  return parentDir;
- }
+  result_metadata->parent_dir = parent_dir;
+  result_metadata->last_inode = inode;
+  strlcpy(result_metadata->last_file_name, file_name, NAME_MAX + 1);
 
+  return result_metadata;
+}
 
-
- void setup_dots_dir(block_sector_t sector, struct thread* t) {
-    
-    struct dir* child = dir_open(inode_open(sector));
-    dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
-    dir_add(dir, "..", t->current_Dir->inode->sector);
-    dir_add(dir, ".", sector);
-
-  }
+void setup_dots_dir(block_sector_t sector, struct dir *parent_dir) {
+  struct dir *child = dir_open(inode_open(sector));
+  dir_add(child, "..", inode_get_inumber(dir_get_inode(parent_dir)));
+  dir_add(child, ".", sector);
+}
