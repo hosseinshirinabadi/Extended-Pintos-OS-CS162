@@ -188,9 +188,9 @@ thread_create (const char *name, int priority,
   t->parent_thread = thread_current();
 
   // set the current directory of the newly created thread to the cwd of the parent
-  if (t->parent_thread->current_directory) {
-    t->current_directory = dir_reopen(t->parent_thread->current_directory);
-  }
+  // if (t->parent_thread->current_directory) {
+  //   t->current_directory = dir_reopen(t->parent_thread->current_directory);
+  // }
   
   #endif
 
@@ -484,8 +484,8 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->children);
   t->current_fd = 2;
   t->parent_thread = NULL;
-  struct dir *root = dir_open_root();
-  t->current_directory = root;
+  // struct dir *root = dir_open_root();
+  // t->current_directory = root;
   #endif
 
 }
