@@ -166,7 +166,7 @@ void close_helper (int fd) {
 //Helper for close syscall
 bool chdir_helper (char* dirName) {
   struct thread *current_thread = thread_current ();
-  struct resolve_metadata *metadata = resolve_path(current_thread->current_directory, dirName);
+  struct resolve_metadata *metadata = resolve_path(current_thread->current_directory, dirName, false);
   if (metadata == NULL) {
     return false;
   }
@@ -191,19 +191,23 @@ bool chdir_helper (char* dirName) {
 // dir = "/desktop/162/files"
 bool mkdir_helper (const char *dir) {
   struct thread *current_thread = thread_current ();
-  struct resolve_metadata *metadata = resolve_path(current_thread->current_directory, dirName);
+  struct resolve_metadata *metadata = resolve_path(current_thread->current_directory, dir, true);
 
   if (!metadata) {
     return false;
   }
 
   struct dir *parent_dir = get_parent_dir(metadata);
-  struct inode *last_inode = get_last_inode(metadata);
+  char file_name[NAME_MAX + 1];
+  strlcpy(file_name, get_last_filename(metadata), NAME_MAX + 1);
 
-  struct inode_disk *disk_data = get_inode_disk(last_inode);
-  if (!inode_is_dir(disk_data)) {
+  block_sector_t dir_sector = filesys_create_dir (file_name, 16, parent_dir);
+  if (dir_sector == 0) {
     return false;
   }
+
+  setup_dots_dir (dir_sector, parent_dir);
+  return true;
 }
   
 

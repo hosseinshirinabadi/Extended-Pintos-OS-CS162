@@ -304,43 +304,73 @@ char *get_last_filename (struct resolve_metadata *metadata) {
 // path = /desktio/162/files
 // path = "/desktop/162/file.txt\0"
 struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir) {
-  char part[NAME_MAX + 1] = {0};
+  char next_part[NAME_MAX + 1] = {0};
 
   struct resolve_metadata *result_metadata = malloc(sizeof(struct resolve_metadata));
 
   struct dir *current_dir;
   struct dir *parent_dir;
   char file_name[NAME_MAX + 1] = {0};
-  struct inode_disk* inode;
-  bool pathTraverse = false;
+  struct inode *inode;
+  bool inode_exists = false;
 
-  int status = get_next_part(part, &path);
+  int status = get_next_part(next_part, &path);
 
   if (path[0] == '/') {
     current_dir = dir_open_root();
-    parent_dir = current_dir;
   } else {
     current_dir = dir_reopen(dir);
-    parent_dir = current_dir;
   }
 
+  // path = "/desktop/162/file2.txt\0"
+  // path = "/desktop/161/file1.txt\0"
+
+  // path = "/desktop/161/files\0"
+
+  // dir = 162
+  // path = ../161/file1.txt
+
+  // path = /desktop/file.txt/161
   while (status > 0) {
-    pathTraverse = dir_lookup(current_dir, part, &inode);
-    if (pathTraverse == 0) {
+    inode_exists = dir_lookup(current_dir, next_part, &inode);
+
+    // take care of mkdir traversal
+    if (is_mkdir) {
+      if (!inode_exists) {
+        status = get_next_part(file_name, &path);
+        if (status == 0) {
+          result_metadata->parent_dir = current_dir;
+          result_metadata->last_inode = NULL;
+          strlcpy(result_metadata->last_file_name, next_part, NAME_MAX + 1);
+          return result_metadata;
+        } else {
+          return NULL;
+        }
+      }
+    }
+
+    if (!inode_exists) {
       return NULL;
     }
 
     if (inode_is_dir(get_inode_disk(inode))) {
-      dir_close(parent_dir);
+      // if (strcmp(next_part, "..") == 0) {
+      //   struct inode *node;
+      //   parent_dir = dir_lookup(current_dir, "..", &node);
+      // }
       parent_dir = current_dir;
       current_dir = dir_open(inode);
+      strlcpy(file_name, next_part, NAME_MAX + 1);
+      status = get_next_part(next_part, &path);
     } else {
+      status = get_next_part(next_part, &path);
+      if (status != 0) {
+        return NULL;
+      }
       dir_close(parent_dir);
       parent_dir = current_dir;
-      strlcpy(file_name, part, NAME_MAX + 1);
+      strlcpy(file_name, next_part, NAME_MAX + 1);
     }
-
-    status = get_next_part(part, &path); 
   }
 
   if (status != 0) {
