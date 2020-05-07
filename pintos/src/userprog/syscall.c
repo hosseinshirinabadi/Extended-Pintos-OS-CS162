@@ -55,15 +55,15 @@ bool create_helper (const char *file, unsigned initial_size) {
 //Helper for open syscall
 int open_helper (const char *file) {
 	// lock_acquire(&flock);
-  struct resolve_metadata *metadata = resolve_path(file);
+  struct resolve_metadata *metadata = resolve_path(thread_current()->current_directory, file, false);
   struct inode *last_inode = get_last_inode(metadata);
   char file_name[NAME_MAX + 1];
   strlcpy(file_name, get_last_filename(metadata), NAME_MAX + 1);
+  struct dir *parent_dir = get_parent_dir(metadata);
 
   if (inode_is_dir(last_inode)) {
     // struct inode *opened_inode = filesys_open_dir(file_name, parent_dir);
-    struct dir *opened_dir = dir_open(last_inode);
-
+    struct dir *opened_dir = dir_reopen(last_inode);
     if (opened_dir) {
       struct thread *current_thread = thread_current();
       int fd = (current_thread->current_fd)++;
@@ -82,7 +82,7 @@ int open_helper (const char *file) {
 
   } else {
     struct file *opened_file = filesys_open_file(file_name, parent_dir);
-    if (opened_inode) {
+    if (opened_file) {
       struct thread *current_thread = thread_current();
       int fd = (current_thread->current_fd)++;
       open_file *file_element = malloc(sizeof(open_file));
@@ -239,7 +239,9 @@ bool mkdir_helper (const char *dir) {
 }
 
 bool readdir_helper (int fd, char *name) {
-
+  open_file *file = get_file_by_fd(fd);
+  bool success = dir_readdir (file->dir, name);
+  return success;
 }
   
 
@@ -456,6 +458,13 @@ syscall_handler (struct intr_frame *f UNUSED)
     int fd = args[1];
     char *name = args[2];
 
+    if (!validate_arg(name)) {
+        f->eax = -1;
+        printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+        thread_exit ();
+      } else {
+        f->eax = readdir_helper(fd, name);
+      }
 
   } else if (args[0] == SYS_ISDIR) {
     int fd = args[1];

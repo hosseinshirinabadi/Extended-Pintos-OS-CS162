@@ -303,6 +303,7 @@ char *get_last_filename (struct resolve_metadata *metadata) {
 // path = /desktop/162/file.txt
 // path = /desktio/162/files
 // path = "/desktop/162/file.txt\0"
+// path = "/\0"
 struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir) {
   char next_part[NAME_MAX + 1] = {0};
 
@@ -320,6 +321,13 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
     current_dir = dir_open_root();
   } else {
     current_dir = dir_reopen(dir);
+  }
+
+  if (status == 0) {
+    result_metadata->parent_dir = NULL;
+    result_metadata->last_inode = current_dir->inode;
+    strlcpy(result_metadata->last_file_name, "/", NAME_MAX + 1);
+    return result_metadata;
   }
 
   // path = "/desktop/162/file2.txt\0"
@@ -363,11 +371,12 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
       strlcpy(file_name, next_part, NAME_MAX + 1);
       status = get_next_part(next_part, &path);
     } else {
-      status = get_next_part(next_part, &path);
+      char temp[NAME_MAX + 1] = {0};
+      status = get_next_part(temp, &path);
       if (status != 0) {
         return NULL;
       }
-      dir_close(parent_dir);
+      // dir_close(parent_dir);
       parent_dir = current_dir;
       strlcpy(file_name, next_part, NAME_MAX + 1);
     }

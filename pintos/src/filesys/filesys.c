@@ -97,9 +97,9 @@ struct file *filesys_open_file (const char *name, struct dir *parent_dir) {
 
   struct inode *inode = NULL;
 
-  if (dir != NULL)
+  if (parent_dir != NULL)
     dir_lookup (parent_dir, name, &inode);
-  dir_close (dir);
+  dir_close (parent_dir);
 
   return file_open (inode);
 }
