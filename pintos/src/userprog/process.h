@@ -9,7 +9,7 @@ typedef struct file_status {
     char *file_name;
     struct file *file;
     struct list_elem elem;
-    struct dir *dir;
+    struct dir* dir;
 } open_file;
 
 tid_t process_execute (const char *file_name);

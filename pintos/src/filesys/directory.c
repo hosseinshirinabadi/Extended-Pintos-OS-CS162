@@ -312,6 +312,7 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
   struct dir *current_dir;
   struct dir *parent_dir;
   char file_name[NAME_MAX + 1] = {0};
+  // char *file_name;
   struct inode *inode;
   bool inode_exists = false;
 
@@ -319,15 +320,22 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
 
   if (path[0] == '/') {
     current_dir = dir_open_root();
+    inode = current_dir->inode;
+    parent_dir = current_dir;
+    strlcpy(file_name, path, NAME_MAX + 1);
   } else {
     current_dir = dir_reopen(dir);
   }
 
-  if (status == 0) {
-    result_metadata->parent_dir = NULL;
-    result_metadata->last_inode = current_dir->inode;
-    strlcpy(result_metadata->last_file_name, "/", NAME_MAX + 1);
-    return result_metadata;
+//   if (status == 0) {
+//     result_metadata->parent_dir = NULL;
+//     result_metadata->last_inode = current_dir->inode;
+//     strlcpy(result_metadata->last_file_name, "/", NAME_MAX + 1);
+//     return result_metadata;
+
+
+  if (!current_dir) {
+    return NULL;
   }
 
   // path = "/desktop/162/file2.txt\0"
@@ -349,6 +357,7 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
         if (status == 0) {
           result_metadata->parent_dir = current_dir;
           result_metadata->last_inode = NULL;
+          memset(result_metadata->last_file_name, 0, NAME_MAX + 1);
           strlcpy(result_metadata->last_file_name, next_part, NAME_MAX + 1);
           return result_metadata;
         } else {
@@ -358,6 +367,13 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
     }
 
     if (!inode_exists) {
+      // status = get_next_part(file_name, &path);
+      // if (status == 0) {
+      //   result_metadata->parent_dir = current_dir;
+      //   result_metadata->last_inode = current_dir->inode;
+      //   strlcpy(result_metadata->last_file_name, next_part, NAME_MAX + 1);
+      //   return result_metadata;
+      // }
       return NULL;
     }
 
@@ -388,6 +404,7 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
 
   result_metadata->parent_dir = parent_dir;
   result_metadata->last_inode = inode;
+  memset(result_metadata->last_file_name, 0, NAME_MAX + 1);
   strlcpy(result_metadata->last_file_name, file_name, NAME_MAX + 1);
 
   return result_metadata;
