@@ -65,17 +65,20 @@ int open_helper (const char *file) {
   if (inode_is_dir(get_inode_disk(get_last_inode(metadata)))) {
     // dir = dir_reopen(get_last_inode(metadata));
     dir = dir_open(get_last_inode(metadata));
+    // dir = dir_reopen(get_parent_dir(metadata));
+    // dir_close(get_parent_dir(metadata));
     int fd = (current_thread->current_fd)++;
     open_file *file_element = malloc(sizeof(open_file));
     file_element->fd = fd;
     file_element->file_name = file;
     file_element->file = NULL;
     file_element->dir = dir;
+    // file_element->dir = get_parent_dir(metadata);
     list_push_back(&current_thread->files, &file_element->elem);
     return fd;
   }
 	struct file *opened_file = filesys_open_anyPath(get_last_filename(metadata), get_parent_dir(metadata));
-  //struct file *opened_file = filesys_open(file );
+  // dir_close(get_parent_dir(metadata));
 	if (opened_file) {
 		
 		int fd = (current_thread->current_fd)++;
@@ -158,6 +161,7 @@ bool remove_helper (const char *file_name) {
       bool success1 = filesys_remove_anyPath(".", current_dir);
       bool success2 = filesys_remove_anyPath("..", current_dir);
       bool success3 = filesys_remove_anyPath(get_last_filename(metadata), get_parent_dir(metadata));
+      // dir_close(get_parent_dir(metadata));
       return success1 && success2 && success3;
     } else {
       return false;
@@ -165,6 +169,7 @@ bool remove_helper (const char *file_name) {
 
   } else {
     bool success = filesys_remove_anyPath(get_last_filename(metadata), get_parent_dir(metadata));
+    dir_close(get_parent_dir(metadata));
     return success;
   }
 	
@@ -258,7 +263,8 @@ bool chdir_helper (char* dirName) {
   dir_close(current_thread->current_directory);
   //dir_close(get_parent_dir(metadata));
   // dir_close(parent_dir);
-  current_thread->current_directory = dir_open(last_inode);
+  // current_thread->current_directory = dir_open(last_inode);
+  current_thread->current_directory = dir_reopen(get_parent_dir(metadata));
   dir_close(get_parent_dir(metadata));
   return true;
 }
@@ -344,7 +350,6 @@ syscall_handler (struct intr_frame *f UNUSED)
         thread_exit ();
   }
 
-  
   /*
    * The following print statement, if uncommented, will print out the syscall
    * number whenever a process enters a system call. You might find it useful

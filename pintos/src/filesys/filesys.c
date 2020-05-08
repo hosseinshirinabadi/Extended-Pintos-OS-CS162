@@ -95,7 +95,7 @@ filesys_create_dir (const char *name, off_t initial_size, struct dir* pDir)
   struct dir *dir = pDir;
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
-                  && dir_create (inode_sector, 16)
+                  && dir_create (inode_sector, initial_size)
                   && dir_add (dir, name, inode_sector));
 
 

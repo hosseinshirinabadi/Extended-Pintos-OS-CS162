@@ -254,7 +254,7 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
   while (inode_read_at (dir->inode, &e, sizeof e, dir->pos) == sizeof e)
     {
       dir->pos += sizeof e;
-      if (e.in_use && (strcmp(e.name, ".") != 0 || strcmp(e.name, "..") != 0))
+      if (e.in_use && (strcmp(e.name, ".") != 0 && strcmp(e.name, "..") != 0))
         {
           strlcpy (name, e.name, NAME_MAX + 1);
           return true;
@@ -341,12 +341,13 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
     inode = parent_dir->inode;
     //parent_dir = dir_reopen(current_dir);
     strlcpy(file_name, path, NAME_MAX + 1);
-  } else if (path[0] == '.') {
-    //current_dir = dir;
-    parent_dir = dir;
+  // } else if (path[0] == '.') {
+  //   //current_dir = dir;
+  //   parent_dir = dir;
   } else  {
     //current_dir = dir_reopen(dir);
     parent_dir = dir_reopen(dir);
+    // parent_dir = dir_open()
   }
 
   // if (!current_dir) {
@@ -393,6 +394,7 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
     if (!inode_exists) {
       return NULL;
     }
+    
 
     if (inode_is_dir(get_inode_disk(inode)) || isRoot) {
       // if (strcmp(next_part, "..") == 0) {
@@ -403,6 +405,7 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
       //dir_close(parent_dir);
       // parent_dir = current_dir;
       // current_dir = dir_open(inode);
+      // path = "/a/b"
       dir_close(parent_dir);
       parent_dir = dir_open(inode);
       
