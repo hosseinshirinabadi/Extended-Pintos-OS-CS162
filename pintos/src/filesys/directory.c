@@ -50,11 +50,16 @@ dir_create (block_sector_t sector, size_t entry_cnt)
    it takes ownership.  Returns a null pointer on failure. */
 struct dir *
 dir_open (struct inode *inode)
-{
+{ 
 
   struct dir *dir = calloc (1, sizeof *dir);
   if (inode != NULL && dir != NULL)
     {
+      if (inode_get_inumber(inode) == ROOT_DIR_SECTOR) {
+        struct inode_disk *disk_data = get_inode_disk(inode);
+        set_is_dir(disk_data, true);
+        write_to_cache(ROOT_DIR_SECTOR, disk_data);
+      }
       dir->inode = inode;
       dir->pos = 0;
       //inode_deny_write(dir->inode);
@@ -249,7 +254,7 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
   while (inode_read_at (dir->inode, &e, sizeof e, dir->pos) == sizeof e)
     {
       dir->pos += sizeof e;
-      if (e.in_use)
+      if (e.in_use && (strcmp(e.name, ".") != 0 || strcmp(e.name, "..") != 0))
         {
           strlcpy (name, e.name, NAME_MAX + 1);
           return true;
@@ -306,6 +311,8 @@ char *get_last_filename (struct resolve_metadata *metadata) {
 // path = /desktop/162/file.txt
 // path = /desktio/162/files
 // path = "/desktop/162/file.txt\0"
+
+// path = "abc"
 struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir) {
   char next_part[NAME_MAX + 1] = {0};
 
@@ -333,7 +340,7 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
     isRoot = true;
     inode = parent_dir->inode;
     //parent_dir = dir_reopen(current_dir);
-    strlcpy(file_name, next_part, sizeof(next_part) + 1);
+    strlcpy(file_name, path, NAME_MAX + 1);
   } else if (path[0] == '.') {
     //current_dir = dir;
     parent_dir = dir;
@@ -374,6 +381,10 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
           strlcpy(result_metadata->last_file_name, next_part,sizeof(next_part)  + 1);
           return result_metadata;
         } else {
+          return NULL;
+        }
+      } else {
+        if (path[0] == '\0') {
           return NULL;
         }
       }
@@ -425,6 +436,6 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
 
 void setup_dots_dir(block_sector_t sector, struct dir *parent_dir) {
   struct dir *child = dir_open(inode_open(sector));
-  dir_add(child, "..", inode_get_inumber(dir_get_inode(parent_dir)));
   dir_add(child, ".", sector);
+  dir_add(child, "..", inode_get_inumber(dir_get_inode(parent_dir)));
 }

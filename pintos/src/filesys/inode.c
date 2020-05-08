@@ -62,6 +62,10 @@ struct inode
     // struct inode_disk data;             /* Inode content. */
   };
 
+int inode_get_open_cnt(struct inode *inode) {
+  return inode->open_cnt;
+}
+
 
 struct inode_disk *get_inode_disk(struct inode *inode) {
   char buffer[BLOCK_SECTOR_SIZE];

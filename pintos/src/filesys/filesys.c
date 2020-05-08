@@ -83,7 +83,7 @@ filesys_create_file (const char *name, off_t initial_size)
                   && dir_add (dir, get_last_filename(metadata), inode_sector));
   if (!success && inode_sector != 0)
     free_map_release (inode_sector, 1);
-  dir_close (dir);
+  // dir_close (dir);
 
   return success;
 }
@@ -113,6 +113,8 @@ filesys_create_dir (const char *name, off_t initial_size, struct dir* pDir)
 
   if (!success && inode_sector != 0)
     free_map_release (inode_sector, 1);
+
+  // dir_close (dir);
 
   // if (success) {
   //   dir_close (dir);
@@ -160,8 +162,6 @@ filesys_open_anyPath (const char *name, struct dir * pDir)
 
 
 
-
-
 /* Deletes the file named NAME.
    Returns true if successful, false on failure.
    Fails if no file named NAME exists,
@@ -175,6 +175,17 @@ filesys_remove (const char *name)
 
   return success;
 }
+
+bool
+filesys_remove_anyPath (const char *name, struct dir *parent_dir)
+{
+  // struct dir *dir = dir_open_root ();
+  bool success = parent_dir != NULL && dir_remove (parent_dir, name);
+  dir_close (parent_dir);
+
+  return success;
+}
+
 
 /* Formats the file system. */
 static void

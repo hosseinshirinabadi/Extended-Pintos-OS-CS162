@@ -62,8 +62,9 @@ int open_helper (const char *file) {
   if (!metadata) {
     return NULL;
   }
-  if(inode_is_dir(get_inode_disk(get_last_inode(metadata)))) {
-    dir = dir_reopen(get_last_inode(metadata));
+  if (inode_is_dir(get_inode_disk(get_last_inode(metadata)))) {
+    // dir = dir_reopen(get_last_inode(metadata));
+    dir = dir_open(get_last_inode(metadata));
     int fd = (current_thread->current_fd)++;
     open_file *file_element = malloc(sizeof(open_file));
     file_element->fd = fd;
@@ -128,9 +129,46 @@ int write_helper (int fd, const void *buffer, unsigned size) {
 //Helper for remove syscall
 bool remove_helper (const char *file_name) {
 	// lock_acquire(&flock);
-	bool success = filesys_remove(file_name);
+  struct thread *current_thread = thread_current ();
+  struct resolve_metadata *metadata = resolve_path(current_thread->current_directory, file_name, false);
+
+  if (!metadata) {
+    return false;
+  }
+
+  struct inode *last_inode = get_last_inode(metadata);
+  if (inode_is_dir(get_inode_disk(last_inode))) {
+    // check opennes
+    if (inode_get_open_cnt(last_inode) > 0) {
+      return false;
+    }
+
+    if (strcmp(get_last_filename(metadata), "/") == 0) {
+      return false;
+    }
+
+    struct dir *current_dir = dir_open(last_inode);
+
+    // read . and ..
+    char name[NAME_MAX + 1] = {0}; 
+    dir_readdir (current_dir, name);
+    dir_readdir (current_dir, name);
+
+    if (dir_readdir (current_dir, name) == false) {
+      bool success1 = filesys_remove_anyPath(".", current_dir);
+      bool success2 = filesys_remove_anyPath("..", current_dir);
+      bool success3 = filesys_remove_anyPath(get_last_filename(metadata), get_parent_dir(metadata));
+      return success1 && success2 && success3;
+    } else {
+      return false;
+    }
+
+  } else {
+    bool success = filesys_remove_anyPath(get_last_filename(metadata), get_parent_dir(metadata));
+    return success;
+  }
+	
 	// lock_release(&flock);
-	return success;
 }
 
 //Helper for read syscall
@@ -221,6 +259,7 @@ bool chdir_helper (char* dirName) {
   //dir_close(get_parent_dir(metadata));
   // dir_close(parent_dir);
   current_thread->current_directory = dir_open(last_inode);
+  dir_close(get_parent_dir(metadata));
   return true;
 }
 
@@ -251,8 +290,12 @@ bool mkdir_helper (const char *dir) {
 
 bool readdir_helper (int fd, char *name) {
   open_file *file = get_file_by_fd(fd);
-  bool success = dir_readdir (file->dir, name);
-  return success;
+  if (file) {
+    bool success = dir_readdir (file->dir, name);
+    return success;
+  } else {
+    return false;
+  }
 }
 
 bool isdir_helper(int fd) {
