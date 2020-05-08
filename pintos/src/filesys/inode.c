@@ -36,9 +36,7 @@ bool inode_is_dir(struct inode_disk *disk_data) {
   return disk_data->is_dir;
 }
 
-void set_is_dir(struct inode_disk *disk_data, bool value) {
-  disk_data->is_dir = value;
-}
+
 
 
 struct indirect_disk {
@@ -81,6 +79,11 @@ struct indirect_disk *get_indirect_disk(block_sector_t sector_number) {
   // memcpy(result, buffer, BLOCK_SECTOR_SIZE);
   struct inode_disk *result = buffer;
   return result;
+}
+
+void set_is_dir(struct inode_disk* disk_data, bool value) {
+  
+  disk_data->is_dir = value;
 }
 
 /* Returns the block device sector that contains byte offset POS

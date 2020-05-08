@@ -49,13 +49,12 @@ open_file *get_file_by_fd (int fd) {
 
 //Helper for create syscall
 bool create_helper (const char *file, unsigned initial_size) {
-	return filesys_create (file, initial_size);
+	return filesys_create_file(file, initial_size);
 }
 
 //Helper for open syscall
 int open_helper (const char *file) {
 	// lock_acquire(&flock);
-<<<<<<< HEAD
   struct thread *current_thread = thread_current();
   struct dir* dir;
 
@@ -64,7 +63,7 @@ int open_helper (const char *file) {
     return NULL;
   }
   if(inode_is_dir(get_inode_disk(get_last_inode(metadata)))) {
-    dir = dir_open(get_last_inode(metadata));
+    dir = dir_reopen(get_last_inode(metadata));
     int fd = (current_thread->current_fd)++;
     open_file *file_element = malloc(sizeof(open_file));
     file_element->fd = fd;
@@ -72,15 +71,19 @@ int open_helper (const char *file) {
     file_element->file = NULL;
     file_element->dir = dir;
     list_push_back(&current_thread->files, &file_element->elem);
+    return fd;
   }
-	struct file *opened_file = filesys_open(get_last_filename(metadata));
+	struct file *opened_file = filesys_open_anyPath(get_last_filename(metadata), get_parent_dir(metadata));
+  //struct file *opened_file = filesys_open(file );
 	if (opened_file) {
 		
 		int fd = (current_thread->current_fd)++;
 		open_file *file_element = malloc(sizeof(open_file));
 		file_element->fd = fd;
-		file_element->file_name = file;
+		file_element->file_name = get_last_filename(metadata);
+    //file_element->file_name = file;
 		file_element->file = opened_file;
+    file_element->dir = NULL;
 		list_push_back(&current_thread->files, &file_element->elem);
 		// lock_release(&flock);
 		return fd;
@@ -110,6 +113,9 @@ int write_helper (int fd, const void *buffer, unsigned size) {
 	// lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
 	if (file) {
+    if(file->dir) {
+      return -1;
+    }
 		int bytes_written = file_write(file->file, (const void * ) buffer, size);
 		// lock_release(&flock);
 		return bytes_written;
@@ -171,14 +177,23 @@ unsigned tell_helper (int fd) {
 void close_helper (int fd) {
 	// lock_acquire(&flock);
 	open_file *file = get_file_by_fd(fd);
+
 	if (file) {
+
 		list_remove(&file->elem);
-		file_close(file->file);
+    if(file->dir) {
+      dir_close(file->dir);
+    } else {
+      file_close(file->file);
+    }
+		
 		free(file);
 		// lock_release(&flock);
 	} else {
 		// lock_release(&flock);
 	}
+
+
 }
 
 
@@ -201,7 +216,9 @@ bool chdir_helper (char* dirName) {
     }
   }
   
+
   dir_close(current_thread->current_directory);
+  //dir_close(get_parent_dir(metadata));
   // dir_close(parent_dir);
   current_thread->current_directory = dir_open(last_inode);
   return true;
@@ -217,20 +234,43 @@ bool mkdir_helper (const char *dir) {
   }
 
   struct dir *parent_dir = get_parent_dir(metadata);
-  char file_name[NAME_MAX + 1];
-  strlcpy(file_name, get_last_filename(metadata), NAME_MAX + 1);
+  //memcpy(file_name, get_last_filename(metadata), sizeof(get_last_filename(metadata)));
 
-  block_sector_t dir_sector = filesys_create_dir (file_name, 16, parent_dir);
+  block_sector_t dir_sector = filesys_create_dir (get_last_filename(metadata), 16, parent_dir);
   if (dir_sector == 0) {
     return false;
   }
 
+  //free(file_name);
+
   setup_dots_dir (dir_sector, parent_dir);
+
+  dir_close(parent_dir);
   return true;
 }
 
 bool readdir_helper (int fd, char *name) {
+  open_file *file = get_file_by_fd(fd);
+  bool success = dir_readdir (file->dir, name);
+  return success;
+}
 
+bool isdir_helper(int fd) {
+  open_file *file = get_file_by_fd(fd);
+  if (file->dir) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+int inumber_helper (int fd) {
+  open_file *file = get_file_by_fd(fd);
+  if (file->dir) {
+    return inode_get_inumber(dir_get_inode(file->dir));
+  } else {
+    return inode_get_inumber(file_get_inode(file->file));
+  }
 }
   
 
@@ -434,27 +474,37 @@ syscall_handler (struct intr_frame *f UNUSED)
   } else if (args[0] == SYS_MKDIR) {
     const char *dir = args[1];
 
-    if (!validate_arg(dir)) {
-        f->eax = -1;
-        printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-        thread_exit ();
-      } else {
-        f->eax = mkdir_helper(dir);
-      }
+    f->eax = mkdir_helper(dir);
+    // if (!validate_arg(dir)) {
+    //     f->eax = -1;
+    //     printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+    //     thread_exit ();
+    // } else {
+    //     f->eax = mkdir_helper(dir);
+    // }
 
 
   } else if (args[0] == SYS_READDIR) {
     int fd = args[1];
     char *name = args[2];
 
+    f->eax = readdir_helper(fd, name);
+
+    // if (!validate_arg(name)) {
+    //     f->eax = -1;
+    //     printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
+    //     thread_exit ();
+    // } else {
+    //   f->eax = readdir_helper(fd, name);
+    // }
 
   } else if (args[0] == SYS_ISDIR) {
     int fd = args[1];
-
+    f->eax = isdir_helper(fd);
 
   } else if (args[0] == SYS_INUMBER) {
     int fd = args[1];
-
+    f->eax = inumber_helper(fd);
 
   } else {
   	f->eax = -1;

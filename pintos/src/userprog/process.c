@@ -30,7 +30,6 @@ struct lock child_lock;
 struct args_struct {
   char *cmd_line;
   child *child_struct;
-  struct dir *cwd;
 };
 
 char *argv[1024];
@@ -86,7 +85,7 @@ process_execute (const char *file_name)
   parser(fn_copy);
   char *command = argv[0];
 
-  thread_current()->current_directory = dir_open_root();
+  //thread_current()->current_directory = dir_open_root();
 
   child *new_child = malloc(sizeof(child));
   if (!new_child) {
@@ -103,7 +102,6 @@ process_execute (const char *file_name)
   }
   args->cmd_line = fn_copy;
   args->child_struct = new_child;
-  args->cwd = thread_current()->current_directory;
 
   lock_init(&child_lock);
   lock_acquire(&child_lock);
@@ -149,7 +147,6 @@ start_process (void *args)
   if (!success)
     thread_exit ();
 
-  thread_current()->current_directory = dir_reopen(arguments->cwd);
 
   child *new_child = arguments->child_struct;
   if (success) {
@@ -233,6 +230,11 @@ process_exit (void)
   while (!list_empty(current_files)) {
     struct list_elem *e = list_pop_back(current_files);
     open_file *current_file = list_entry(e, open_file, elem);
+    // if(current_file->dir) {
+    //   dir_close(current_file->dir)
+    // } else {
+    //   file_close(current_file->file);
+    // }
     file_close(current_file->file);
     free(current_file);
   }

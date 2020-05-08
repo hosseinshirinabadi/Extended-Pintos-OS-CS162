@@ -187,10 +187,6 @@ thread_create (const char *name, int priority,
   // set the parent of the newly created thread to the current thread
   t->parent_thread = thread_current();
 
-  // set the current directory of the newly created thread to the cwd of the parent
-  if (t->parent_thread->current_directory) {
-    t->current_directory = dir_reopen(t->parent_thread->current_directory);
-  }
   
   #endif
 
@@ -209,6 +205,12 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+
+
+// set the current directory of the newly created thread to the cwd of the parent
+  if (t->parent_thread->current_directory) {
+    t->current_directory = t->parent_thread->current_directory;
+  }
   /* Add to run queue. */
   thread_unblock (t);
 

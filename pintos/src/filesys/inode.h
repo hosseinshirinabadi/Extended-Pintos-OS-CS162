@@ -7,7 +7,7 @@
 
 struct bitmap;
 struct inode_disk;
-// struct inode;
+struct inode;
 // struct indirect_disk;
 
 void inode_init (void);
