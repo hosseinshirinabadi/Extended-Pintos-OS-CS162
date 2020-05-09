@@ -163,8 +163,8 @@ bool remove_helper (const char *file_name) {
     // dir_readdir (current_dir, name);
 
     if (dir_readdir (current_dir, name) == false) {
-      // bool success1 = filesys_remove_anyPath(".", current_dir);
-      // bool success2 = filesys_remove_anyPath("..", current_dir);
+      bool success1 = filesys_remove_anyPath(".", current_dir);
+      bool success2 = filesys_remove_anyPath("..", current_dir);
       
       bool success3 = filesys_remove_anyPath(get_last_filename(metadata), get_parent_dir(metadata));
       //inode_close(dir_get_inode(current_dir));

@@ -33,4 +33,6 @@ struct dir *get_parent_dir (struct resolve_metadata *metadata);
 struct inode *get_last_inode (struct resolve_metadata *metadata);
 char *get_last_filename (struct resolve_metadata *metadata);
 
+
+
 #endif /* filesys/directory.h */

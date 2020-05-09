@@ -31,6 +31,9 @@ filesys_init (bool format)
   free_map_open ();
 
   struct dir* dir = dir_open_root();
+  setup_dots_dir(ROOT_DIR_SECTOR, dir);
+
+  struct inode_disk* disk;
 
   thread_current()->current_directory = dir;
 
@@ -76,7 +79,10 @@ filesys_create_file (const char *name, off_t initial_size)
   if (!metadata) {
     return false;
   }
+
+
   struct dir *dir = get_parent_dir(metadata);
+
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
                   && inode_create (inode_sector, initial_size)
@@ -114,7 +120,7 @@ filesys_create_dir (const char *name, off_t initial_size, struct dir* pDir)
   if (!success && inode_sector != 0)
     free_map_release (inode_sector, 1);
 
-  // dir_close (dir);
+  //dir_close (dir);
 
   // if (success) {
   //   dir_close (dir);
