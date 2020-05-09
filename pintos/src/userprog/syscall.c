@@ -61,7 +61,7 @@ int open_helper (const char *file) {
 
   struct resolve_metadata *metadata = resolve_path(current_thread->current_directory, file, false);
   if (!metadata) {
-    return NULL;
+    return -1;
   }
   if (inode_is_dir(get_inode_disk(get_last_inode(metadata)))) {
     // dir = dir_reopen(get_last_inode(metadata));
