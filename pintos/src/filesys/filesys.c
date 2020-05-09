@@ -191,7 +191,7 @@ filesys_remove_anyPath (const char *name, struct dir *parent_dir)
 {
   // struct dir *dir = dir_open_root ();
   bool success = parent_dir != NULL && dir_remove (parent_dir, name);
-  dir_close (parent_dir);
+  //dir_close (parent_dir);
 
   return success;
 }
