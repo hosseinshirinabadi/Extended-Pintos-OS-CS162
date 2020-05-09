@@ -183,6 +183,17 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
+  #ifdef USERPROG
+  // set the parent of the newly created thread to the current thread
+  t->parent_thread = thread_current();
+
+  // set the current directory of the newly created thread to the cwd of the parent
+  // if (t->parent_thread->current_directory) {
+  //   t->current_directory = dir_reopen(t->parent_thread->current_directory);
+  // }
+  
+  #endif
+
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
@@ -198,6 +209,11 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+  // set the current directory of the newly created thread to the cwd of the parent
+  if (t->parent_thread->current_directory) {
+    t->current_directory = t->parent_thread->current_directory;
+  }
+  
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -467,6 +483,16 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
+
+  #ifdef USERPROG
+  list_init(&t->files);
+  list_init(&t->children);
+  t->current_fd = 2;
+  t->parent_thread = NULL;
+  // struct dir *root = dir_open_root();
+  // t->current_directory = root;
+  #endif
+
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

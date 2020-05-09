@@ -12,6 +12,7 @@
 #define NAME_MAX 14
 
 struct inode;
+struct resolve_metadata;
 
 /* Opening and closing directories. */
 bool dir_create (block_sector_t sector, size_t entry_cnt);
@@ -26,5 +27,10 @@ bool dir_lookup (const struct dir *, const char *name, struct inode **);
 bool dir_add (struct dir *, const char *name, block_sector_t);
 bool dir_remove (struct dir *, const char *name);
 bool dir_readdir (struct dir *, char name[NAME_MAX + 1]);
+struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir);
+
+struct dir *get_parent_dir (struct resolve_metadata *metadata);
+struct inode *get_last_inode (struct resolve_metadata *metadata);
+char *get_last_filename (struct resolve_metadata *metadata);
 
 #endif /* filesys/directory.h */
