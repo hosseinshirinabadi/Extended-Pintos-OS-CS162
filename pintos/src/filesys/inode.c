@@ -207,10 +207,15 @@ inode_create (block_sector_t sector, off_t length)
 
       size_t sectors = bytes_to_sectors (length);
       disk_inode->length = length;
+      // disk_inode->length = 0;
       disk_inode->magic = INODE_MAGIC;
+      disk_inode->is_dir = false;
+
+      // write_to_cache(sector, disk_inode);
 
       if (sectors == 0) {
         // free(zeros);
+        write_to_cache(sector, disk_inode);
         free(disk_inode);
         return success;
       }
@@ -269,7 +274,6 @@ inode_create (block_sector_t sector, off_t length)
       free(direct_pointers);
 
 
-
       int sectors_left = sectors - (NUM_DIRECT_POINTERS + NUM_POINTERS_PER_INDIRECT);
       if (sectors_left < 0) {
         sectors_left = 0;
@@ -283,8 +287,6 @@ inode_create (block_sector_t sector, off_t length)
 
       struct indirect_disk *indirect_pointers = malloc(sizeof(struct indirect_disk)); 
       memset(indirect_pointers, 0, sizeof(struct indirect_disk));
-
-
       
       //block_sector_t* data_pointers = malloc(sizeof(block_sector_t) * num_indirects * NUM_POINTERS_PER_INDIRECT);
       struct indirect_disk data_pointers[num_indirects];
@@ -329,7 +331,7 @@ inode_create (block_sector_t sector, off_t length)
             sectors_left--;
           }
 
-          write_to_cache(indirect_pointers->pointers[i],  &data_pointers[i]);
+          write_to_cache(indirect_pointers->pointers[i], &data_pointers[i]);
         }
 
         write_to_cache(disk_inode->doubly_indirect_pointer, indirect_pointers);   
