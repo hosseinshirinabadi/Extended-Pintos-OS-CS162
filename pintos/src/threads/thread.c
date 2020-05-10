@@ -189,7 +189,7 @@ thread_create (const char *name, int priority,
 
   // set the current directory of the newly created thread to the cwd of the parent
   // if (t->parent_thread->current_directory) {
-  //   t->current_directory = dir_reopen(t->parent_thread->current_directory);
+  //   t->current_directory = t->parent_thread->current_directory;
   // }
   
   #endif
@@ -603,6 +603,10 @@ allocate_tid (void)
   lock_release (&tid_lock);
 
   return tid;
+}
+
+void thread_set_directory(struct thread *t, struct dir* dir) {
+  t->current_directory = dir;
 }
 
 /* Offset of `stack' member within `struct thread'.

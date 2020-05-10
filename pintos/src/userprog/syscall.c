@@ -62,13 +62,15 @@ int open_helper (const char *file) {
 
   struct resolve_metadata *metadata = resolve_path(current_thread->current_directory, file, false);
   if (!metadata) {
-    return NULL;
+    return -1;
   }
   if (inode_is_dir(get_inode_disk(get_last_inode(metadata)))) {
     // dir = dir_reopen(get_last_inode(metadata));
     dir = dir_open(get_last_inode(metadata));
     // dir = dir_reopen(get_parent_dir(metadata));
-    // dir_close(get_parent_dir(metadata));
+    
+      dir_close(get_parent_dir(metadata));
+    
     int fd = (current_thread->current_fd)++;
     open_file *file_element = malloc(sizeof(open_file));
     file_element->fd = fd;
@@ -79,8 +81,8 @@ int open_helper (const char *file) {
     list_push_back(&current_thread->files, &file_element->elem);
     return fd;
   }
-	struct file *opened_file = filesys_open_anyPath(get_last_filename(metadata), get_parent_dir(metadata));
-  // dir_close(get_parent_dir(metadata));
+	struct file *opened_file = filesys_open_file(get_last_filename(metadata), get_parent_dir(metadata));
+  //dir_close(get_parent_dir(metadata));
 	if (opened_file) {
 		
 		int fd = (current_thread->current_fd)++;
@@ -140,12 +142,15 @@ bool remove_helper (const char *file_name) {
     return false;
   }
 
+  // if(strcmp(get_last_filename(metadata), ".") == 0 || strcmp(get_last_filename(metadata), "..") == 0) {
+
+  //   return false;
+  // }
+
   struct inode *last_inode = get_last_inode(metadata);
   if (inode_is_dir(get_inode_disk(last_inode))) {
     // check opennes
-    if (inode_get_open_cnt(last_inode) > 0) {
-      return false;
-    }
+    
 
     if (strcmp(get_last_filename(metadata), "/") == 0) {
       return false;
@@ -155,15 +160,24 @@ bool remove_helper (const char *file_name) {
 
     // read . and ..
     char name[NAME_MAX + 1] = {0}; 
-    dir_readdir (current_dir, name);
-    dir_readdir (current_dir, name);
+    // dir_readdir (current_dir, name);
+    // dir_readdir (current_dir, name);
 
     if (dir_readdir (current_dir, name) == false) {
       bool success1 = filesys_remove_anyPath(".", current_dir);
       bool success2 = filesys_remove_anyPath("..", current_dir);
+      
       bool success3 = filesys_remove_anyPath(get_last_filename(metadata), get_parent_dir(metadata));
+      //inode_close(dir_get_inode(current_dir));
       // dir_close(get_parent_dir(metadata));
-      return success1 && success2 && success3;
+      
+      //return success1 && success2 && success3;
+      if (success3){
+        if (current_thread->current_directory == current_dir) {
+          thread_set_directory(current_thread, NULL);
+        }
+      }
+      return success3;
     } else {
       return false;
     }
@@ -268,8 +282,8 @@ bool chdir_helper (char* dirName) {
   dir_close(current_thread->current_directory);
   //dir_close(get_parent_dir(metadata));
   // dir_close(parent_dir);
-  // current_thread->current_directory = dir_open(last_inode);
-  current_thread->current_directory = dir_reopen(get_parent_dir(metadata));
+  current_thread->current_directory = dir_open(last_inode);
+  //current_thread->current_directory = dir_reopen(get_parent_dir(metadata));
   dir_close(get_parent_dir(metadata));
   return true;
 }

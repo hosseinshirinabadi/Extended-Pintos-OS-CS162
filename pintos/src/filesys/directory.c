@@ -11,6 +11,7 @@ struct dir
   {
     struct inode *inode;                /* Backing store. */
     off_t pos;                          /* Current position. */
+
     //struct dir* parent_directory;
   };
 
@@ -55,14 +56,15 @@ dir_open (struct inode *inode)
   struct dir *dir = calloc (1, sizeof *dir);
   if (inode != NULL && dir != NULL)
     {
-      if (inode_get_inumber(inode) == ROOT_DIR_SECTOR) {
-        struct inode_disk *disk_data = get_inode_disk(inode);
-        set_is_dir(disk_data, true);
-        write_to_cache(ROOT_DIR_SECTOR, disk_data);
-      }
+      // if (inode_get_inumber(inode) == 1) {
+      //   struct inode_disk *disk_data = get_inode_disk(inode);
+      //   set_is_dir(disk_data, true);
+      //   write_to_cache(ROOT_DIR_SECTOR, disk_data);
+      // }
       dir->inode = inode;
       dir->pos = 0;
       //inode_deny_write(dir->inode);
+
       return dir;
     }
   else
@@ -229,6 +231,9 @@ dir_remove (struct dir *dir, const char *name)
   if (inode == NULL)
     goto done;
 
+  
+
+
   /* Erase directory entry. */
   e.in_use = false;
   if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e)
@@ -237,6 +242,10 @@ dir_remove (struct dir *dir, const char *name)
   /* Remove inode. */
   inode_remove (inode);
   success = true;
+
+
+
+
 
  done:
   inode_close (inode);
@@ -314,10 +323,14 @@ char *get_last_filename (struct resolve_metadata *metadata) {
 struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir) {
   char next_part[NAME_MAX + 1] = {0};
 
+  if (dir == NULL) {
+    return NULL;
+  }
   if(strcmp(path, "") == 0) {
     return NULL;
   }
   struct resolve_metadata *result_metadata = malloc(sizeof(struct resolve_metadata));
+
 
   //struct dir *current_dir;
   struct dir *parent_dir;
@@ -335,15 +348,27 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
 
   if (path[0] == '/') {
     parent_dir = dir_open_root();
+    //setup_dots_dir(ROOT_DIR_SECTOR,parent_dir);
     //current_dir = dir_open_root();
     isRoot = true;
     inode = parent_dir->inode;
+    char rootName[1] = "/";
     //parent_dir = dir_reopen(current_dir);
-    strlcpy(file_name, path, NAME_MAX + 1);
-  } else  {
-    //current_dir = dir_reopen(dir);
+    strlcpy(file_name, rootName, 2);
+  } else  {      
     parent_dir = dir_reopen(dir);
+    //current_dir = dir_reopen(dir);
+    //parent_dir = dir_reopen(dir);
+    inode_exists = dir_lookup(parent_dir, ".", &inode);
+    if (!inode_exists) {
+      return NULL;
+    }
+
+    
   }
+
+  
+
 
   if (!parent_dir) {
     return NULL;
@@ -404,13 +429,19 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
       // parent_dir = current_dir;
       // current_dir = dir_open(inode);
       // path = "/a/b"
-      dir_close(parent_dir);
-      parent_dir = dir_open(inode);
+
+      if (path[0] != '\0') {
+        dir_close(parent_dir);
+        parent_dir = dir_open(inode);
+      }
+      // dir_close(parent_dir);
+      // parent_dir = dir_open(inode);
       
       strlcpy(file_name, next_part, sizeof(next_part)  + 1);
       status = get_next_part(next_part, &path);
       isRoot = false;
     } else {
+
       char temp[NAME_MAX + 1] = {0};
       status = get_next_part(temp, &path);
       if (status != 0) {
@@ -433,8 +464,10 @@ struct resolve_metadata *resolve_path(struct dir *dir, char *path, bool is_mkdir
   return result_metadata;
 }
 
+
 void setup_dots_dir(block_sector_t sector, struct dir *parent_dir) {
   struct dir *child = dir_open(inode_open(sector));
   dir_add(child, ".", sector);
   dir_add(child, "..", inode_get_inumber(dir_get_inode(parent_dir)));
+
 }
