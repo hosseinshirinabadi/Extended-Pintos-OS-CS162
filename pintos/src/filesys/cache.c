@@ -1,10 +1,12 @@
-#include "filesys/cache.h"
 #include <string.h>
 #include "threads/malloc.h"
 #include <stdbool.h>
 #include <list.h>
 #include "threads/synch.h"
 #include "filesys/filesys.h"
+#include "filesys/cache.h"
+
+
 
 struct cache_entry {
   block_sector_t sector;  // sector number on disk
@@ -29,6 +31,10 @@ void initialize_cache() {
   // initialize LRU list and global lock
   list_init(&LRU);
   lock_init(&global_cache_lock);
+
+  // for calculating hit and miss rate
+  cache_miss = 0;
+  cache_hit = 0;
 }
 
 void read_from_cache(block_sector_t target_sector, void *buff) {
@@ -45,11 +51,15 @@ void read_from_cache(block_sector_t target_sector, void *buff) {
       memcpy(buff, block->data, BLOCK_SECTOR_SIZE);
       lock_release(&block->cache_lock);
 
+      cache_hit++;
+
       // lock_release(&global_cache_lock);
       return;
     }
     lock_release(&block->cache_lock);
   }
+
+  cache_miss++;
 
   if (counter < 64) {
     // find an empty block
@@ -105,12 +115,14 @@ void write_to_cache(block_sector_t target_sector, void *buff) {
       block->dirty = true;
       lock_release(&block->cache_lock);
 
+      cache_hit++;
+
       // lock_release(&global_cache_lock);
       return;
     }
     lock_release(&block->cache_lock);
   }
-
+  cache_miss++;
   if (counter < 64) {
     // find an empty block
     block = &cache[counter];
@@ -170,4 +182,33 @@ void update_LRU1(struct cache_entry *block) {
 void update_LRU2(struct cache_entry *block) {
   list_remove(&block->elem);
   list_push_back(&LRU, &block->elem);
+}
+
+
+void reset_cache() {
+
+  flush_cache();
+
+  lock_acquire(&global_cache_lock);
+  
+  // /* It's your fault if this causes a panic. */
+  // ASSERT (bitmap_none (usebits, 0, NUM_CACHE_ENTRIES));
+
+  /* Clear all entries. */
+  for (size_t i = 0; i < NUM_CACHE_ENTRIES; i++) {
+    struct cache_entry *block;
+    block->sector = 0;
+  }
+
+  counter = 0;
+  free(&LRU);
+  list_init(&LRU);
+
+  /* Reset stats. */
+  cache_miss = 0;
+  cache_hit = 0;
+
+  lock_release(&global_cache_lock);
+
+
 }
