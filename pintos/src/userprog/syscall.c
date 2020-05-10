@@ -68,7 +68,7 @@ int open_helper (const char *file) {
     dir = dir_open(get_last_inode(metadata));
     // dir = dir_reopen(get_parent_dir(metadata));
     
-      dir_close(get_parent_dir(metadata));
+    dir_close(get_parent_dir(metadata));
     
     int fd = (current_thread->current_fd)++;
     open_file *file_element = malloc(sizeof(open_file));
