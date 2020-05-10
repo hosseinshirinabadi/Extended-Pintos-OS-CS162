@@ -13,6 +13,7 @@
 #include "userprog/process.h"
 #include "filesys/inode.h"
 #include "filesys/directory.h"
+#include "filesys/cache.h"
 
 
 static void syscall_handler (struct intr_frame *);
@@ -574,7 +575,10 @@ syscall_handler (struct intr_frame *f UNUSED)
     int fd = args[1];
     f->eax = inumber_helper(fd);
 
-  } else {
+  } else if (args[0] == SYS_RESET_CACHE) {
+    reset_cache();
+  }
+    else {
   	f->eax = -1;
 	  printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
 	  thread_exit ();
