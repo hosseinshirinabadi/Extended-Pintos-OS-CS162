@@ -13,7 +13,7 @@ void write_to_cache(block_sector_t target_sector, void *buff);
 void flush_cache(void);
 void reset_cache(void);
 
-size_t cache_miss;
+size_t cache_access;
 size_t cache_hit;
 
 #endif /* filesys/cache.h */

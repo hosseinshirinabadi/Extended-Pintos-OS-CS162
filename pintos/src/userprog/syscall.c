@@ -14,6 +14,7 @@
 #include "filesys/inode.h"
 #include "filesys/directory.h"
 #include "filesys/cache.h"
+#include "devices/block.h"
 
 
 static void syscall_handler (struct intr_frame *);
@@ -575,8 +576,19 @@ syscall_handler (struct intr_frame *f UNUSED)
     int fd = args[1];
     f->eax = inumber_helper(fd);
 
-  } else if (args[0] == SYS_RESET_CACHE) {
-    reset_cache();
+  } else if (args[0] == SYS_GET_CACHE) {
+    if (args[1] == 0) {
+      reset_cache();
+      f->eax = 0;
+    }
+    else if (args[1] ==  1)
+      f->eax = cache_hit;
+    else if (args[1] == 2)
+      f->eax = cache_access;
+    else if (args[1] == 3)
+      f->eax = block_read_write_cnt(fs_device,0);
+    else if (args[1] == 4)
+      f->eax = block_read_write_cnt(fs_device,1);
   }
     else {
   	f->eax = -1;

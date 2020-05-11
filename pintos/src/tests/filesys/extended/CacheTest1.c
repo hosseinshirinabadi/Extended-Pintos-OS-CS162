@@ -13,58 +13,60 @@ test_main (void)
 
   int file;
   size_t num_bytes;
+  int index = 0;
 
   /* create a second file and opening it for wrtitin the buffer in it*/
   CHECK (create ("xyz", 0), "create \"xyz\"");
   CHECK ((file = open ("xyz")) > 1, "open \"xyz\" for writing");
 
   /* use a for loop to write random bytes into file*/
-  for(int i=0; i < NUM_ENTRIES; i++) {
+  while (index < NUM_ENTRIES) {
     /* writing random bytes into temp buffer */
     random_init (0);
     random_bytes (tempBuf, sizeof tempBuf);
     num_bytes = write (file, tempBuf, BLOCK_SECTOR_SIZE);
     if (num_bytes != BLOCK_SECTOR_SIZE)
-      fail("was supposed to write %zu bytes in \"xyz\" but return value is %zu", BLOCK_SECTOR_SIZE, num_bytes);
+      fail ("didn't write proper number of bytes");
+    index++;
   }
+  index = 0;
 
   msg ("close \"xyz\" after writing");
   close (file);
 
   msg("cache reset");
   /* a syscall to reset the cache */
-  reset_cache();
+  get_cache(0);
 
   CHECK ((file = open ("xyz")) > 1, "open \"xyz\" for first read");
-  msg ("read for the first time");
-  for (int i = 0; i < NUM_ENTRIES; i++) {
+  while (index < NUM_ENTRIES) {
     num_bytes = read (file, tempBuf, BLOCK_SECTOR_SIZE);
     if (num_bytes != BLOCK_SECTOR_SIZE)
-      fail ("was supposed to read %zu bytes from \"xyz\" but return value is %zu", BLOCK_SECTOR_SIZE, num_bytes);
+      fail ("didn't read proper number of bytes");
+    index++;
   }
+  index = 0;
 
   msg("close \"xyz\" after first read");
   close (file);
-  /* calculating the hit rate of first read */
-  int first_hit = cache_hit;
-  int first_total = cache_hit + cache_miss;
+  /* calculating the hit rate of first read by using get_cache(i) syscall */
+  int first_hit = get_cache(1);
+  int first_total = get_cache(2);
 
   CHECK ((file = open ("xyz")) > 1, "open \"xyz\" for second read");
-  msg ("read for the second time");
-  for (int i = 0; i < NUM_ENTRIES; i ++) {
+  while (index < NUM_ENTRIES) {
     num_bytes = read (file, tempBuf, BLOCK_SECTOR_SIZE);
     if (num_bytes != BLOCK_SECTOR_SIZE)
-      fail ("was supposed to read %zu bytes from \"xyz\" but return value is %zu", BLOCK_SECTOR_SIZE, num_bytes);  
+      fail ("didn't read proper number of bytes");
+    index++;
   }
 
   close (file);
   msg("close \"xyz\" after second read");
 
-  // int second_hit = cache_hit;
-  // int second_total = cache_hit + cache_miss;
 
-  int first_hit_rate = (100 * first_hit) / first_total;
-  int second_hit_rate = (100 * (cache_hit - first_hit)) / (cache_hit + cache_miss - first_total);
+  int first_hit_rate = first_hit / first_total;
+  int second_hit_rate = (get_cache(1) - first_hit) / (get_cache(2) - first_total);
 
   remove ("xyz");
 

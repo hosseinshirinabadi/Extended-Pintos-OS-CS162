@@ -19,7 +19,8 @@ enum
     SYS_TELL,                   /* Report current position in a file. */
     SYS_CLOSE,                  /* Close a file. */
     SYS_PRACTICE,               /* Returns arg incremented by 1 */
-    SYS_RESET_CACHE,
+    SYS_GET_CACHE,
+    
 
     /* Unused. */
     SYS_MMAP,                   /* Map a file into memory. */

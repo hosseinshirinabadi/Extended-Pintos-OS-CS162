@@ -33,13 +33,13 @@ void initialize_cache() {
   lock_init(&global_cache_lock);
 
   // for calculating hit and miss rate
-  cache_miss = 0;
+  cache_access = 0;
   cache_hit = 0;
 }
 
 void read_from_cache(block_sector_t target_sector, void *buff) {
   lock_acquire(&global_cache_lock);
-
+  cache_access++;
   struct cache_entry *block;
   for (int i = 0; i < counter; i++) {
     block = &cache[i];
@@ -58,9 +58,6 @@ void read_from_cache(block_sector_t target_sector, void *buff) {
     }
     lock_release(&block->cache_lock);
   }
-
-  cache_miss++;
-
   if (counter < 64) {
     // find an empty block
     block = &cache[counter];
@@ -102,7 +99,7 @@ void read_from_cache(block_sector_t target_sector, void *buff) {
 
 void write_to_cache(block_sector_t target_sector, void *buff) {
   lock_acquire(&global_cache_lock);
-
+  cache_access++;
   struct cache_entry *block;
   for (int i = 0; i < counter; i++) {
     block = &cache[i];
@@ -116,13 +113,14 @@ void write_to_cache(block_sector_t target_sector, void *buff) {
       lock_release(&block->cache_lock);
 
       cache_hit++;
+      
 
       // lock_release(&global_cache_lock);
       return;
     }
     lock_release(&block->cache_lock);
   }
-  cache_miss++;
+  
   if (counter < 64) {
     // find an empty block
     block = &cache[counter];
@@ -190,23 +188,17 @@ void reset_cache() {
   flush_cache();
 
   lock_acquire(&global_cache_lock);
-  
-  // /* It's your fault if this causes a panic. */
-  // ASSERT (bitmap_none (usebits, 0, NUM_CACHE_ENTRIES));
 
-  /* Clear all entries. */
   for (size_t i = 0; i < NUM_CACHE_ENTRIES; i++) {
     struct cache_entry *block;
     block->sector = 0;
   }
 
   counter = 0;
-  free(&LRU);
   list_init(&LRU);
-
-  /* Reset stats. */
-  cache_miss = 0;
+  
   cache_hit = 0;
+  cache_access = 0;
 
   lock_release(&global_cache_lock);
 
