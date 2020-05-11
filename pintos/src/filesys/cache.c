@@ -6,8 +6,6 @@
 #include "filesys/filesys.h"
 #include "filesys/cache.h"
 
-
-
 struct cache_entry {
   block_sector_t sector;  // sector number on disk
   char data[BLOCK_SECTOR_SIZE];  // cached data
@@ -18,7 +16,7 @@ struct cache_entry {
 
 struct cache_entry cache[64];
 struct list LRU;
-struct lock global_cache_lock;
+struct lock global_cache_lock; 
 int counter = 0;  // keeps track of number of blocks in the cache
 
 
@@ -32,16 +30,19 @@ void initialize_cache() {
   list_init(&LRU);
   lock_init(&global_cache_lock);
 
-  // for calculating hit and miss rate
-  cache_miss = 0;
+  // for calculating cache hit rate
+  cache_acceses = 0;
   cache_hit = 0;
 }
 
 void read_from_cache(block_sector_t target_sector, void *buff) {
   lock_acquire(&global_cache_lock);
+  cache_acceses++;
 
   struct cache_entry *block;
-  for (int i = 0; i < counter; i++) {
+  // for (int i = 0; i < counter; i++) {
+  int i = 0;
+  while (i < counter) {
     block = &cache[i];
     lock_acquire(&block->cache_lock);
     if (block->sector == target_sector) {
@@ -53,13 +54,11 @@ void read_from_cache(block_sector_t target_sector, void *buff) {
 
       cache_hit++;
 
-      // lock_release(&global_cache_lock);
       return;
     }
+    i++;
     lock_release(&block->cache_lock);
   }
-
-  cache_miss++;
 
   if (counter < 64) {
     // find an empty block
@@ -76,7 +75,6 @@ void read_from_cache(block_sector_t target_sector, void *buff) {
     block->dirty = false;
     lock_release(&block->cache_lock);
 
-    // lock_release(&global_cache_lock);
   } else {
     // evict and replace
     struct list_elem *block_elem = list_front(&LRU);
@@ -95,16 +93,17 @@ void read_from_cache(block_sector_t target_sector, void *buff) {
     memcpy(block->data, buff, BLOCK_SECTOR_SIZE);
     block->dirty = false;
     lock_release(&block->cache_lock);
-
-    // lock_release(&global_cache_lock);
   } 
 }
 
 void write_to_cache(block_sector_t target_sector, void *buff) {
   lock_acquire(&global_cache_lock);
+  cache_acceses++;
 
   struct cache_entry *block;
-  for (int i = 0; i < counter; i++) {
+  int i = 0;
+  // for (int i = 0; i < counter; i++) {
+  while (i < counter) {
     block = &cache[i];
     lock_acquire(&block->cache_lock);
     if (block->sector == target_sector) {
@@ -117,12 +116,12 @@ void write_to_cache(block_sector_t target_sector, void *buff) {
 
       cache_hit++;
 
-      // lock_release(&global_cache_lock);
       return;
     }
+    i++;
     lock_release(&block->cache_lock);
   }
-  cache_miss++;
+
   if (counter < 64) {
     // find an empty block
     block = &cache[counter];
@@ -137,7 +136,6 @@ void write_to_cache(block_sector_t target_sector, void *buff) {
     block->dirty = true;
     lock_release(&block->cache_lock);
 
-    // lock_release(&global_cache_lock);
   } else {
     // evict and replace
     struct list_elem *block_elem = list_front(&LRU);
@@ -155,8 +153,6 @@ void write_to_cache(block_sector_t target_sector, void *buff) {
     memcpy(block->data, buff, BLOCK_SECTOR_SIZE);
     block->dirty = true;
     lock_release(&block->cache_lock);
-
-    // lock_release(&global_cache_lock);
   }
 }
 
@@ -185,30 +181,27 @@ void update_LRU2(struct cache_entry *block) {
 }
 
 
-void reset_cache() {
+bool reset_cache() {
 
+  // flush cache to disk so old data is not lost
   flush_cache();
 
   lock_acquire(&global_cache_lock);
-  
-  // /* It's your fault if this causes a panic. */
-  // ASSERT (bitmap_none (usebits, 0, NUM_CACHE_ENTRIES));
 
-  /* Clear all entries. */
-  for (size_t i = 0; i < NUM_CACHE_ENTRIES; i++) {
-    struct cache_entry *block;
+  int i = 0;
+  while (i < counter) {
+    struct cache_entry *block = &cache[i];
     block->sector = 0;
+    i++;
   }
 
   counter = 0;
-  free(&LRU);
   list_init(&LRU);
 
-  /* Reset stats. */
-  cache_miss = 0;
+  cache_acceses = 0;
   cache_hit = 0;
 
   lock_release(&global_cache_lock);
 
-
+  return true;
 }

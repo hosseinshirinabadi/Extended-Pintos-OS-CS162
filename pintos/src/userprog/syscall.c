@@ -64,10 +64,9 @@ int open_helper (const char *file) {
   if (!metadata) {
     return -1;
   }
+
   if (inode_is_dir(get_inode_disk(get_last_inode(metadata)))) {
-    // dir = dir_reopen(get_last_inode(metadata));
     dir = dir_open(get_last_inode(metadata));
-    // dir = dir_reopen(get_parent_dir(metadata));
     
     dir_close(get_parent_dir(metadata));
     
@@ -77,19 +76,16 @@ int open_helper (const char *file) {
     file_element->file_name = file;
     file_element->file = NULL;
     file_element->dir = dir;
-    // file_element->dir = get_parent_dir(metadata);
     list_push_back(&current_thread->files, &file_element->elem);
     return fd;
   }
+
 	struct file *opened_file = filesys_open_file(get_last_filename(metadata), get_parent_dir(metadata));
-  //dir_close(get_parent_dir(metadata));
-	if (opened_file) {
-		
+	if (opened_file) {	
 		int fd = (current_thread->current_fd)++;
 		open_file *file_element = malloc(sizeof(open_file));
 		file_element->fd = fd;
 		file_element->file_name = get_last_filename(metadata);
-    //file_element->file_name = file;
 		file_element->file = opened_file;
     file_element->dir = NULL;
 		list_push_back(&current_thread->files, &file_element->elem);
@@ -142,15 +138,8 @@ bool remove_helper (const char *file_name) {
     return false;
   }
 
-  // if(strcmp(get_last_filename(metadata), ".") == 0 || strcmp(get_last_filename(metadata), "..") == 0) {
-
-  //   return false;
-  // }
-
   struct inode *last_inode = get_last_inode(metadata);
   if (inode_is_dir(get_inode_disk(last_inode))) {
-    // check opennes
-    
 
     if (strcmp(get_last_filename(metadata), "/") == 0) {
       return false;
@@ -158,26 +147,19 @@ bool remove_helper (const char *file_name) {
 
     struct dir *current_dir = dir_open(last_inode);
 
-    // read . and ..
     char name[NAME_MAX + 1] = {0}; 
-    // dir_readdir (current_dir, name);
-    // dir_readdir (current_dir, name);
-
     if (dir_readdir (current_dir, name) == false) {
       bool success1 = filesys_remove_anyPath(".", current_dir);
       bool success2 = filesys_remove_anyPath("..", current_dir);
       
       bool success3 = filesys_remove_anyPath(get_last_filename(metadata), get_parent_dir(metadata));
-      //inode_close(dir_get_inode(current_dir));
-      // dir_close(get_parent_dir(metadata));
       
-      //return success1 && success2 && success3;
-      if (success3){
+      if (success3) {
         if (current_thread->current_directory == current_dir) {
           thread_set_directory(current_thread, NULL);
         }
       }
-      return success3;
+      return success1 && success2 && success3;
     } else {
       return false;
     }
@@ -187,7 +169,6 @@ bool remove_helper (const char *file_name) {
     dir_close(get_parent_dir(metadata));
     return success;
   }
-	
 	// lock_release(&flock);
 }
 
@@ -267,9 +248,7 @@ bool chdir_helper (char* dirName) {
     return false;
   }
 
-  // struct dir *parent_dir = metadata->parent_dir;
   struct inode *last_inode = get_last_inode(metadata);
-  // char file_name[NAME_MAX + 1] = metadata->last_file_name;
 
   struct inode_disk *disk_data = get_inode_disk(last_inode);
   if (disk_data != NULL) {
@@ -280,15 +259,11 @@ bool chdir_helper (char* dirName) {
   
 
   dir_close(current_thread->current_directory);
-  //dir_close(get_parent_dir(metadata));
-  // dir_close(parent_dir);
   current_thread->current_directory = dir_open(last_inode);
-  //current_thread->current_directory = dir_reopen(get_parent_dir(metadata));
   dir_close(get_parent_dir(metadata));
   return true;
 }
 
-// dir = "/desktop/162/files"
 bool mkdir_helper (const char *dir) {
   struct thread *current_thread = thread_current ();
   if (strcmp(dir, "") == 0) {
@@ -342,7 +317,7 @@ int inumber_helper (int fd) {
 }
   
 
-//Validate arguments for all syscalls
+// Validate arguments for all syscalls
 bool validate_arg (void *arg) {
 	struct thread *current_thread = thread_current ();
   uint32_t *ptr = (uint32_t *) arg;
@@ -528,44 +503,16 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   } else if (args[0] == SYS_CHDIR) {
     const char *dir = args[1];
-
     f->eax = chdir_helper(dir);
-
-    // if (!validate_arg(dir)) {
-    //     f->eax = -1;
-    //     printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-    //     thread_exit ();
-    //   } else {
-    //     f->eax = chdir_helper(dir);
-    //   }
-    
 
   } else if (args[0] == SYS_MKDIR) {
     const char *dir = args[1];
-
     f->eax = mkdir_helper(dir);
-    // if (!validate_arg(dir)) {
-    //     f->eax = -1;
-    //     printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-    //     thread_exit ();
-    // } else {
-    //     f->eax = mkdir_helper(dir);
-    // }
-
 
   } else if (args[0] == SYS_READDIR) {
     int fd = args[1];
     char *name = args[2];
-
     f->eax = readdir_helper(fd, name);
-
-    // if (!validate_arg(name)) {
-    //     f->eax = -1;
-    //     printf ("%s: exit(%d)\n", &thread_current ()->name, -1);
-    //     thread_exit ();
-    // } else {
-    //   f->eax = readdir_helper(fd, name);
-    // }
 
   } else if (args[0] == SYS_ISDIR) {
     int fd = args[1];
@@ -576,7 +523,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     f->eax = inumber_helper(fd);
 
   } else if (args[0] == SYS_RESET_CACHE) {
-    reset_cache();
+    f->eax = reset_cache();
   }
     else {
   	f->eax = -1;

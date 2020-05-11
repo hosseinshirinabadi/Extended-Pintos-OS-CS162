@@ -85,7 +85,6 @@ process_execute (const char *file_name)
   parser(fn_copy);
   char *command = argv[0];
 
-  //thread_current()->current_directory = dir_open_root();
 
   child *new_child = malloc(sizeof(child));
   if (!new_child) {
@@ -230,8 +229,8 @@ process_exit (void)
   while (!list_empty(current_files)) {
     struct list_elem *e = list_pop_back(current_files);
     open_file *current_file = list_entry(e, open_file, elem);
-    // if(current_file->dir) {
-    //   dir_close(current_file->dir)
+    // if (current_file->dir) {
+    //   dir_close(current_file->dir);
     // } else {
     //   file_close(current_file->file);
     // }

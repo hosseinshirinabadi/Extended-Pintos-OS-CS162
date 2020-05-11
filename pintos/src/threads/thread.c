@@ -188,10 +188,9 @@ thread_create (const char *name, int priority,
   t->parent_thread = thread_current();
 
   // set the current directory of the newly created thread to the cwd of the parent
-  // if (t->parent_thread->current_directory) {
-  //   t->current_directory = t->parent_thread->current_directory;
-  // }
-  
+  if (t->parent_thread->current_directory) {
+    t->current_directory = t->parent_thread->current_directory;
+  }
   #endif
 
   /* Stack frame for kernel_thread(). */
@@ -208,11 +207,6 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
-
-  // set the current directory of the newly created thread to the cwd of the parent
-  if (t->parent_thread->current_directory) {
-    t->current_directory = t->parent_thread->current_directory;
-  }
   
   /* Add to run queue. */
   thread_unblock (t);
@@ -489,8 +483,6 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->children);
   t->current_fd = 2;
   t->parent_thread = NULL;
-  // struct dir *root = dir_open_root();
-  // t->current_directory = root;
   #endif
 
 }

@@ -99,22 +99,8 @@ filesys_create_dir (const char *name, off_t initial_size, struct dir* pDir)
                   && dir_create (inode_sector, initial_size)
                   && dir_add (dir, name, inode_sector));
 
-
-// mkdir /0
-// mkdir /0/0
-// mkdir /0/0/0
-// if(success) {
-//   struct inode_disk* disk;
-//   char buffer[BLOCK_SECTOR_SIZE];
-//   disk = malloc(sizeof(disk));
-//   read_from_cache(inode_sector ,disk);
-//   set_is_dir(disk, true);
-//   write_to_cache(inode_sector, disk);
-// }
-
   if (!success && inode_sector != 0)
     free_map_release (inode_sector, 1);
-  // dir_close (dir);
 
   return inode_sector;
 }
@@ -185,9 +171,7 @@ filesys_remove (const char *name)
 bool
 filesys_remove_anyPath (const char *name, struct dir *parent_dir)
 {
-  // struct dir *dir = dir_open_root ();
   bool success = parent_dir != NULL && dir_remove (parent_dir, name);
-  //dir_close (parent_dir);
 
   return success;
 }
