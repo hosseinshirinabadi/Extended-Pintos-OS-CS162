@@ -30,17 +30,16 @@ void initialize_cache() {
   list_init(&LRU);
   lock_init(&global_cache_lock);
 
-  // for calculating cache hit rate
-  cache_acceses = 0;
+  // for calculating hit and miss rate
+  cache_access = 0;
   cache_hit = 0;
 }
 
 void read_from_cache(block_sector_t target_sector, void *buff) {
   lock_acquire(&global_cache_lock);
-  cache_acceses++;
-
+  cache_access++;
   struct cache_entry *block;
-  // for (int i = 0; i < counter; i++) {
+
   int i = 0;
   while (i < counter) {
     block = &cache[i];
@@ -98,11 +97,10 @@ void read_from_cache(block_sector_t target_sector, void *buff) {
 
 void write_to_cache(block_sector_t target_sector, void *buff) {
   lock_acquire(&global_cache_lock);
-  cache_acceses++;
-
+  cache_access++;
   struct cache_entry *block;
+
   int i = 0;
-  // for (int i = 0; i < counter; i++) {
   while (i < counter) {
     block = &cache[i];
     lock_acquire(&block->cache_lock);
@@ -115,7 +113,7 @@ void write_to_cache(block_sector_t target_sector, void *buff) {
       lock_release(&block->cache_lock);
 
       cache_hit++;
-
+      
       return;
     }
     i++;
@@ -198,8 +196,8 @@ bool reset_cache() {
   counter = 0;
   list_init(&LRU);
 
-  cache_acceses = 0;
   cache_hit = 0;
+  cache_access = 0;
 
   lock_release(&global_cache_lock);
 

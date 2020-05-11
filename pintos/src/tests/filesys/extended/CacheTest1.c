@@ -4,70 +4,73 @@
 #include "tests/main.h"
 #include "filesys/cache.h"
 
-#define NUM_CACHE_ENTRIES 64
+#define NUM_ENTRIES 30
 static char tempBuf[BLOCK_SECTOR_SIZE];
 
 void
 test_main (void)
 {
-  int file;
-  size_t ret_val;
-  random_init (0);
-  random_bytes (tempBuf, sizeof tempBuf);
-  CHECK (create ("a", 0), "create \"a\"");
-  CHECK ((file = open ("a")) > 1, "open \"a\"");
 
-  
-  for(int i=0; i < NUM_CACHE_ENTRIES; i++)
-  {
-    ret_val = write (file, tempBuf, BLOCK_SECTOR_SIZE);
-    if (ret_val != BLOCK_SECTOR_SIZE)
-      fail ("write %zu bytes in \"a\" returned %zu",
-            BLOCK_SECTOR_SIZE, ret_val);
+  int file;
+  size_t num_bytes;
+  int index = 0;
+
+  /* create a second file and opening it for wrtitin the buffer in it*/
+  CHECK (create ("xyz", 0), "create \"xyz\"");
+  CHECK ((file = open ("xyz")) > 1, "open \"xyz\" for writing");
+
+  /* use a for loop to write random bytes into file*/
+  while (index < NUM_ENTRIES) {
+    /* writing random bytes into temp buffer */
+    random_init (0);
+    random_bytes (tempBuf, sizeof tempBuf);
+    num_bytes = write (file, tempBuf, BLOCK_SECTOR_SIZE);
+    if (num_bytes != BLOCK_SECTOR_SIZE)
+      fail ("didn't write proper number of bytes");
+    index++;
   }
-  msg ("close \"after writing\"");
+  index = 0;
+
+  msg ("close \"xyz\" after writing");
   close (file);
 
   msg("cache reset");
-  // buffer_reset ();
-  reset_cache();
+  /* a syscall to reset the cache */
+  get_cache(0);
 
-  CHECK ((file = open ("a")) > 1, "open \"a\"");
-  msg ("read first time");
-  for (int i = 0; i < NUM_CACHE_ENTRIES; i++)
-  {
-    ret_val = read (file, tempBuf, BLOCK_SECTOR_SIZE);
-    if (ret_val != BLOCK_SECTOR_SIZE)
-        fail ("read %zu bytes in \"a\" returned %zu",
-              BLOCK_SECTOR_SIZE, ret_val);
+  CHECK ((file = open ("xyz")) > 1, "open \"xyz\" for first read");
+  while (index < NUM_ENTRIES) {
+    num_bytes = read (file, tempBuf, BLOCK_SECTOR_SIZE);
+    if (num_bytes != BLOCK_SECTOR_SIZE)
+      fail ("didn't read proper number of bytes");
+    index++;
   }
+  index = 0;
+
+  msg("close \"xyz\" after first read");
   close (file);
-  msg("close \"a\"");
+  /* calculating the hit rate of first read by using get_cache(i) syscall */
+  int first_hit = get_cache(1);
+  int first_total = get_cache(2);
 
-  int first_hit = cache_hit;
-  int first_total = cache_hit + cache_miss;
-  int first_hit_rate = (100 * first_hit) / first_total;
-
-  CHECK ((file = open ("a")) > 1, "open \"a\"");
-  msg ("read \"a\"");
-  for (int i = 0; i < NUM_CACHE_ENTRIES; i ++)
-  {
-    ret_val = read (file, tempBuf, BLOCK_SECTOR_SIZE);
-    if (ret_val != BLOCK_SECTOR_SIZE)
-        fail ("read %zu bytes in \"a\" returned %zu",
-              BLOCK_SECTOR_SIZE, ret_val);
+  CHECK ((file = open ("xyz")) > 1, "open \"xyz\" for second read");
+  while (index < NUM_ENTRIES) {
+    num_bytes = read (file, tempBuf, BLOCK_SECTOR_SIZE);
+    if (num_bytes != BLOCK_SECTOR_SIZE)
+      fail ("didn't read proper number of bytes");
+    index++;
   }
+
   close (file);
-  msg("close \"a\"");
-
-  remove ("a");
+  msg("close \"xyz\" after second read");
 
 
-  int new_hit = cache_hit ;
-  int new_total = cache_hit + cache_miss;
-  int new_hit_rate = 100 * (new_hit - first_hit) / (new_total - first_total);
+  int first_hit_rate = first_hit / first_total;
+  int second_hit_rate = (get_cache(1) - first_hit) / (get_cache(2) - first_total);
 
-  if (new_hit_rate>first_hit_rate){
-    msg("Second reading has higher hit rate than the first time");
+  remove ("xyz");
+
+  if (second_hit_rate>first_hit_rate){
+    msg("Second read has higher hit rate than the first time");
   }
 }

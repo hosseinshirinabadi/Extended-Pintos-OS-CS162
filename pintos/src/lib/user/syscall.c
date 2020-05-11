@@ -197,7 +197,7 @@ sbrk (intptr_t increment)
   /* Homework 5, Part B: YOUR CODE HERE */
   return NULL;
 }
-void
-reset_cache() {
-  return syscall0(SYS_RESET_CACHE);
+int
+get_cache(int index) {
+  return syscall1(SYS_GET_CACHE, index);
 }

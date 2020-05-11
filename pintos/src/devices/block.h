@@ -49,6 +49,8 @@ struct block *block_get_by_name (const char *name);
 struct block *block_first (void);
 struct block *block_next (struct block *);
 
+unsigned long long block_read_write_cnt(struct block *block ,int index);
+
 /* Block device operations. */
 block_sector_t block_size (struct block *);
 void block_read (struct block *, block_sector_t, void *);

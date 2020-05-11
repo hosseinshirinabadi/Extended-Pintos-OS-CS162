@@ -146,6 +146,13 @@ block_size (struct block *block)
   return block->size;
 }
 
+unsigned long long
+block_read_write_cnt(struct block *block ,int index) {
+  if (index == 0)
+    return block->read_cnt;
+  else if (index == 1)
+    return block->write_cnt;
+}
 /* Returns BLOCK's name (e.g. "hda"). */
 const char *
 block_name (struct block *block)
